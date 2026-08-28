@@ -29,6 +29,7 @@ thực hiện qua skill + MCP do mình cung cấp.
 | 10 | MCP: remote server theo skeleton `dr-joy/redmine-automation-mcp` (Express + Streamable HTTP + OAuth 2.1 login page) |
 | 11 | Auth app: **invite-only** — tắt public signup, mời qua Supabase Admin invite |
 | 12 | Transcript khi nguồn không có sẵn: dùng **STT MCP user đã có** (Soniox, ElevenLabs Scribe…). Không có thì skill dừng, báo rõ lý do. **Không ship hướng dẫn Whisper local/API trong MVP** (tính sau) |
+| 13 | Video vào hệ thống bằng **2 đường**: (A) chính — user đưa **direct-download link**, server tự tải; (B) phụ — file local trên máy user, upload qua signed URL. **ffmpeg chạy hoàn toàn server-side** (codec check, faststart, thumbnail) — creator không cần cài ffmpeg. Transcript user cung cấp nhận qua link direct / dán thẳng / file local, **bắt buộc có timestamp** |
 
 ### 1.3 Ngoài phạm vi MVP
 - Track 2 (server-side lesson generation, trả phí) — chỉ chừa sẵn kiến trúc.
@@ -40,19 +41,21 @@ thực hiện qua skill + MCP do mình cung cấp.
 
 ```
 ┌─ Máy user (creator) ─────────────────┐      ┌─ Cloud ──────────────────────────────┐
-│ Claude Code                          │      │                                      │
-│  ├─ skill `study-kit` (orchestration)│      │  study-kit-mcp (Express, Docker,     │
-│  ├─ zoom-us-mcp / yt-dlp             │─MCP─▶│   1 instance luôn-bật, Fly/Railway)  │
-│  ├─ STT MCP của user (Soniox/11Labs) │      │   └─ packages/core (service layer)   │
-│  └─ ffmpeg (codec check + thumb)     │      │        │ user-JWT (RLS)              │
-│        │ curl PUT video              │      │        ▼                             │
-│        ▼                             │      │  Supabase (Tokyo)                    │
-│  signed upload URL ─────────────────────────▶  Auth / Postgres+RLS / Storage      │
-└──────────────────────────────────────┘      │        ▲                             │
-                                              │        │ supabase-js + RLS           │
-┌─ Browser (consumer, zero setup) ─────┐      │  Web app Next.js PWA (Vercel)        │
-│ thư viện / trang học / từ điển / SRS │◀─────┘                                      │
-└──────────────────────────────────────┘
+│ Claude Code                          │      │  study-kit-mcp (Express + ffmpeg,    │
+│  ├─ skill `study-kit` (orchestration)│─MCP─▶│   Docker, 1 instance luôn-bật)       │
+│  ├─ zoom-us-mcp / yt-dlp (caption)   │      │   ├─ packages/core (service layer)   │
+│  ├─ STT MCP của user (Soniox/11Labs) │      │   │    │ user-JWT (RLS)              │
+│  └─ transcript user đưa              │      │   └─ ingest worker (job nền):        │
+│     (link direct / dán / file local) │      │      tải video (URL hoặc Storage) →  │
+│        │                             │      │      ffprobe → transcode/faststart → │
+│        │ đường B: file local         │      │      thumb → Storage                 │
+│        └ curl PUT ── signed URL ────────────▶        ▼                             │
+│  đường A: direct-download link ─MCP─▶│      │  Supabase (Tokyo)                    │
+└──────────────────────────────────────┘      │  Auth / Postgres+RLS / Storage       │
+                                              │        ▲                             │
+┌─ Browser (consumer, zero setup) ─────┐      │        │ supabase-js + RLS           │
+│ thư viện / trang học / từ điển / SRS │◀─────│  Web app Next.js PWA (Vercel)        │
+└──────────────────────────────────────┘      └──────────────────────────────────────┘
 ```
 
 4 thành phần:
@@ -64,11 +67,13 @@ thực hiện qua skill + MCP do mình cung cấp.
 3. **study-kit-mcp** (`apps/mcp`) — remote MCP server theo skeleton redmine-automation-mcp:
    Express + `StreamableHTTPServerTransport` (1 McpServer/session) + OAuth 2.1 qua
    `mcpAuthRouter` + custom `OAuthServerProvider` (login page dán pairing code).
-   Deploy Docker, **1 instance, tắt auto-stop** (session MCP in-memory).
-4. **Skill `study-kit`** (`skills/study-kit`) — chỉ orchestration local. Toàn bộ rule
-   biên tập + rule chọn vocab + schema lesson JSON là **canonical server-side** qua tool
-   `get_authoring_guide` (skill luôn gọi trước khi dựng bài) → sửa rule không cần user
-   cài lại skill; track 2 dùng chung nguồn sự thật.
+   Deploy Docker (**image có ffmpeg**, disk tạm ~1–2GB), **1 instance, tắt auto-stop**
+   (session MCP in-memory). Kèm **ingest worker** chạy nền trong cùng process (Node async,
+   chưa cần queue riêng): tải video → ffprobe → transcode/faststart → thumbnail → Storage.
+4. **Skill `study-kit`** (`skills/study-kit`) — chỉ orchestration local (KHÔNG cần ffmpeg
+   trên máy user). Toàn bộ rule biên tập + rule chọn vocab + schema lesson JSON là
+   **canonical server-side** qua tool `get_authoring_guide` (skill luôn gọi trước khi dựng
+   bài) → sửa rule không cần user cài lại skill; track 2 dùng chung nguồn sự thật.
 
 **Service layer tách `packages/core`**: mọi business function nhận context thuần
 `{ userId, supabase }` — không import type của MCP SDK. `apps/mcp` chỉ là adapter
@@ -104,7 +109,10 @@ lessons         id uuid PK (client-generated),
                 video_provider text CHECK IN ('storage','youtube'),
                 video_ref text,                        -- storage path | youtube video id
                 duration_sec int, thumb_path text,     -- thumb null với youtube (derive i.ytimg.com)
-                status text CHECK IN ('draft','ready') default 'draft',
+                status text CHECK IN ('draft','processing','ready','error') default 'draft',
+                -- draft: metadata đã tạo, chưa có video sẵn sàng
+                -- processing: ingest worker đang tải/transcode; error: job fail (xem ingest_error)
+                ingest_error text NULL,
                 visibility text CHECK IN ('private','community') default 'private',
                 deleted_at timestamptz NULL            -- soft delete
 
@@ -229,16 +237,27 @@ $$;
 - Trang Settings web: list `mcp_grants` (device_label + last_used_at) làm UI "thiết bị đã
   kết nối", nút revoke từng grant.
 
-### 4.2 Tools v1 (7 tools — mọi handler < 60s)
+### 4.2 Tools v1 (9 tools — mọi handler < 60s; việc dài chạy job nền + poll)
 | Tool | Mô tả |
 |---|---|
 | `whoami()` | Xác nhận kết nối, trả display_name + user id |
-| `get_authoring_guide()` | Canonical: rule biên tập transcript + rule chọn vocab + schema lesson JSON + rule chuẩn hoá cues (dedup rolling caption, tách câu giữ timestamp) + rule codec (mục 5.3) |
+| `get_authoring_guide()` | Canonical: rule biên tập transcript + rule chọn vocab + schema lesson JSON + rule chuẩn hoá cues (dedup rolling caption, tách câu giữ timestamp) + ràng buộc transcript có timestamp |
 | `list_lessons()` | Bài của user (chống tạo trùng, tra cứu) |
 | `get_known_words(lang)` | Từ đã thuộc theo ngôn ngữ — skill loại khỏi vocab bài mới |
-| `create_lesson(lesson_json)` | Validate zod (packages/shared), insert transaction lessons+cues+vocab. **Idempotent**: lesson id do client sinh; retry với id đã tồn tại: nếu `status='draft'` → thay toàn bộ; nếu `'ready'` → trả "đã tồn tại, sửa trên web" (không đè). Trả `{lesson_id, web_url, upload_needed}` |
-| `request_video_upload(lesson_id, kind: video\|thumb, size, content_type)` | Verify ownership → signed upload URL (TTL 2h), path server tự dựng. Gọi lại tự do khi token hết hạn |
-| `finalize_lesson(lesson_id)` | Verify file tồn tại + size khớp + content_type → `status='ready'`. Idempotent |
+| `create_lesson(lesson_json)` | Validate zod (packages/shared), insert transaction lessons+cues+vocab. **Idempotent**: lesson id do client sinh; retry với id đã tồn tại: nếu `status='draft'`/`'error'` → thay toàn bộ; nếu `'ready'` → trả "đã tồn tại, sửa trên web" (không đè). Trả `{lesson_id, web_url, video_next_step}` |
+| `ingest_video_from_url(lesson_id, url)` | **Đường A (chính)**: verify ownership + SSRF guard → set `status='processing'`, trả ngay; job nền tải file (giới hạn size + timeout, hỗ trợ URL Zoom kèm User-Agent) → pipeline ffmpeg → Storage → `status='ready'` hoặc `'error'` + `ingest_error` |
+| `get_ingest_status(lesson_id)` | Poll trạng thái job: `processing` / `ready` / `error` (+ ingest_error) |
+| `request_video_upload(lesson_id, kind: video\|thumb, size, content_type)` | **Đường B (phụ, file local không có link)**: verify ownership → signed upload URL (TTL 2h), path server tự dựng. Gọi lại tự do khi token hết hạn |
+| `finalize_lesson(lesson_id)` | Đường B: verify file tồn tại + size khớp + content_type → kích hoạt **cùng pipeline ffmpeg** trên file trong Storage (job nền, `status='processing'` → `'ready'`/`'error'`). Idempotent |
+
+Pipeline ffmpeg server-side (chung cho cả 2 đường + track 2 sau này): ffprobe check codec
+→ không phải h264/aac thì transcode `-c:v libx264 -c:a aac`; h264 sẵn thì remux
+`-c copy`; luôn `-movflags +faststart`; cắt 1 frame làm thumb.jpg; đo duration_sec;
+upload kết quả vào path chuẩn rồi xoá file tạm.
+
+**SSRF guard** cho `ingest_video_from_url` (bắt buộc): chỉ nhận http(s); resolve DNS rồi
+chặn IP private/loopback/link-local/metadata (169.254.x.x); chặn redirect sang IP cấm;
+giới hạn dung lượng tải (theo bucket limit) + timeout tổng; content-type phải là video.
 
 Cắt khỏi v1 (thêm sau khi có nhu cầu thật, không tốn migration): `update_lesson`,
 `delete_lesson`, `add/remove_known_word` — web đã làm được các việc này; cắt update_lesson
@@ -247,13 +266,19 @@ một chiều — ghi rõ trong skill).
 
 References resources (pattern redmine MCP): authoring guide + ví dụ lesson JSON.
 
-### 4.3 Upload video (ngoài band, không nằm trong tool call)
-- Đường chính: `curl -X PUT --upload-file` lên signed upload URL — chịu tới 5GB, đủ cho
-  video 100–500MB; Windows có sẵn curl.exe. Skill bắt buộc chạy Bash timeout 600000ms
-  hoặc `run_in_background`. Đứt mạng → xin URL mới, upload lại (chấp nhận ở quy mô này).
-- Đường resumable (optional, mạng yếu): script Node ~20 dòng dùng `tus-js-client` với
-  header `x-signature` (chunk 6MB bắt buộc, endpoint `{project}.storage.supabase.co`)
-  — kèm sẵn trong skill repo. **Không hứa "TUS bằng curl"** (không khả thi).
+### 4.3 Đưa video vào hệ thống (2 đường)
+- **Đường A — direct-download link (chính)**: user/skill đưa URL mà HTTP GET trả thẳng
+  file (link Zoom cloud download — token sống ~1h, server tải kèm User-Agent; link
+  Supabase Storage; link file server bất kỳ). Server tải + xử lý, máy user không đụng
+  tới file video. Link dạng trang web (Google Drive/Dropbox share page) KHÔNG dùng được —
+  skill kiểm tra và báo user lấy direct link.
+- **Đường B — file local trên máy user (phụ)**: `curl -X PUT --upload-file` lên signed
+  upload URL — chịu tới 5GB; Windows có sẵn curl.exe. Skill bắt buộc chạy Bash timeout
+  600000ms hoặc `run_in_background`. Đứt mạng → xin URL mới, upload lại. Optional cho
+  mạng yếu: script Node ~20 dòng dùng `tus-js-client` với header `x-signature` (chunk 6MB
+  bắt buộc, endpoint `{project}.storage.supabase.co`) — kèm sẵn trong skill repo.
+  **Không hứa "TUS bằng curl"** (không khả thi).
+- Cả 2 đường hội tụ về cùng pipeline ffmpeg server-side (mục 4.2) trước khi bài `ready`.
 
 ## 5. Skill `study-kit`
 
@@ -267,37 +292,44 @@ katakana nghe nhầm, đánh dấu `uncertain` ⚠; rule ưu tiên vocab: đời
 sống trong `get_authoring_guide`, skill chỉ trỏ tới.
 
 ### 5.2 Lấy transcript (pluggable, 2 ưu tiên — KHÔNG có fallback thứ 3)
-1. **Nguồn có sẵn transcript**:
-   - Zoom: zoom-us-mcp (`resolve_recording_link`, `get_recording_transcript`,
-     `get_recording_video_url`) — như SKILL.md hiện tại; yêu cầu `has_transcript: true`.
+1. **Transcript có sẵn** (từ nguồn hoặc do user cung cấp):
+   - Zoom: zoom-us-mcp (`resolve_recording_link`, `get_recording_transcript`) — như
+     SKILL.md hiện tại; yêu cầu `has_transcript: true`.
    - YouTube: yt-dlp trên máy user — `yt-dlp -U` trước; `--write-auto-subs --sub-format json3
      --skip-download` (sub thường: `--write-subs`); dedup rolling caption + gộp/tách lại thành
      câu tự nhiên bằng word-level timing của json3 (rule nằm trong authoring guide).
      Server/track-2 KHÔNG bao giờ tự fetch caption (ToS + chặn IP datacenter); track 2 nguồn
      YouTube bắt buộc client gửi kèm transcript.
-2. **STT MCP user đã có** (video upload, hoặc YouTube không lấy được caption/429/sub rỗng):
-   skill phát hiện MCP STT khả dụng trong phiên (Soniox, ElevenLabs Scribe, …) và dùng nó.
-   Hợp đồng đầu vào duy nhất: transcript dạng segment có timestamp → Claude chuẩn hoá về
-   cues `start_ms/end_ms`.
-3. **Không có cả 2** → skill DỪNG, báo rõ: nguồn này cần STT MCP (gợi ý Soniox/ElevenLabs)
-   hoặc chọn nguồn có transcript sẵn. Không hướng dẫn cài Whisper (quyết định #12).
+   - **User cung cấp trực tiếp**: link direct-download (Claude tự tải về đọc), dán thẳng
+     vào chat, hoặc file local — nhận mọi format phổ biến (VTT/SRT/JSON/text có mốc giờ).
+     **Ràng buộc cứng: transcript phải có timestamp** — không có thì không sync câu với
+     video được (giá trị cốt lõi của app); skill báo và dừng, không tạo bài "chay".
+2. **STT MCP user đã có** (không rơi vào nhánh nào ở trên, hoặc YouTube caption fail
+   429/sub rỗng): skill phát hiện MCP STT khả dụng trong phiên (Soniox, ElevenLabs
+   Scribe, …) và dùng nó. Hợp đồng đầu vào duy nhất: transcript dạng segment có timestamp
+   → Claude chuẩn hoá về cues `start_ms/end_ms`.
+3. **Không có cả 2** → skill DỪNG, báo rõ: nguồn này cần transcript có timestamp hoặc STT
+   MCP (gợi ý Soniox/ElevenLabs). Không hướng dẫn cài Whisper (quyết định #12).
 
-### 5.3 Video & thumbnail
-- Zoom: tải `gallery_view` bằng curl (tránh bản `(CC)`) — như SKILL.md cũ.
+### 5.3 Video & thumbnail (máy user KHÔNG cần ffmpeg — mọi xử lý ở server)
+- Zoom: lấy download URL layout `gallery_view` (tránh bản `(CC)`) qua
+  `get_recording_video_url` → đưa thẳng cho `ingest_video_from_url` (đường A, token URL
+  sống ~1h nên gọi ingest ngay sau khi lấy URL). Không tải video về máy user nữa.
 - YouTube: không tải video, không thumb (web derive `i.ytimg.com/vi/{id}/hqdefault.jpg`).
-- Upload: **bắt buộc** ffprobe check codec trước khi xin upload URL — không phải h264/aac
-  → `ffmpeg -c:v libx264 -c:a aac -movflags +faststart`; kể cả h264 sẵn cũng remux
-  `-c copy -movflags +faststart` (iPhone HEVC không phát được trên Firefox; moov atom cuối
-  file làm seek chậm). Rule này nằm trong authoring guide (track 2 dùng chung).
-- Thumb (zoom/upload): ffmpeg 1 frame → upload kind=thumb.
+- Video user: có direct link → đường A; file local → đường B (curl PUT signed URL).
+- Codec check (HEVC → h264/aac), remux `+faststart`, thumbnail, duration: tất cả do
+  **pipeline ffmpeg server-side** làm (mục 4.2) — áp dụng đồng nhất cho mọi nguồn và
+  cho track 2 sau này. Skill chỉ cần poll `get_ingest_status` tới khi `ready`/`error`
+  và báo kết quả (kèm ingest_error nếu fail).
 - Privacy khi biên tập transcript họp nội bộ: ẩn/bỏ tên khách hàng, thông tin dự án nhạy cảm
   (rule trong authoring guide).
 
 ## 6. Web app
 
 ### 6.1 Trang
-- `/` thư viện: tab **Của tôi** / **Cộng đồng**; card thumbnail + progress; bài `draft`
-  hiện badge + hướng dẫn retry/xoá (lesson kẹt upload không vô hình).
+- `/` thư viện: tab **Của tôi** / **Cộng đồng**; card thumbnail + progress; bài
+  `draft`/`processing`/`error` hiện badge tương ứng (+ ingest_error và hướng dẫn
+  retry/xoá với bài `error`) — lesson kẹt ingest không vô hình.
 - `/lessons/[id]` trang học: video + transcript theo câu (click-to-seek, auto-highlight,
   auto-scroll), panel từ vựng theo câu, A–B repeat, tốc độ 0.5–1.5x, ẩn/hiện bản dịch,
   đánh dấu từ đã thuộc / câu đã học, "▶ Tiếp tục câu chưa học", sửa inline (owner) theo
@@ -352,11 +384,13 @@ Interface: `load, play, pause, seekTo, getCurrentTime, getRate, setRate, onTime,
   rule ẩn thông tin nhạy cảm trong authoring guide; chạy 利用申請 nội bộ (skill
   secure-scaffold) trước khi mời đồng nghiệp dùng.
 - **Onboarding 2 vai trò**: consumer = browser, zero setup; creator = Claude Code +
-  SETUP.md 1 trang (winget ffmpeg + yt-dlp, 2 lệnh `claude mcp add/login`, cách cài skill).
-  Tuần đầu creator ≈ một mình Cát — chấp nhận có ý thức; số creator thực tế là dữ liệu
-  định giá track 2.
+  SETUP.md 1 trang (2 lệnh `claude mcp add/login`, cách cài skill; yt-dlp chỉ cần khi
+  làm bài từ YouTube — KHÔNG cần ffmpeg). Tuần đầu creator ≈ một mình Cát — chấp nhận
+  có ý thức; số creator thực tế là dữ liệu định giá track 2.
 - **MCP hosting**: 1 container luôn-bật (min_machines_running=1 / tắt auto-stop), không
-  scale ngang (session in-memory). Cron dọn `oauth_clients` mồ côi + `pairing_codes` hết hạn.
+  scale ngang (session + ingest job in-memory). Image có ffmpeg, disk tạm ~1–2GB cho
+  ingest; job dở dang khi restart → bài ở `processing` quá X phút coi như `error`
+  (janitor định kỳ). Cron dọn `oauth_clients` mồ côi + `pairing_codes` hết hạn + file tạm.
 
 ## 8. Monorepo & phases
 
@@ -374,7 +408,7 @@ vingo/
 | Phase | Nội dung | Điều kiện xong |
 |---|---|---|
 | **P0** | Supabase project (Tokyo, invite-only) + toàn bộ migrations + RLS + web đọc/học (thư viện, trang học HTML5, từ điển, tiến độ) + PoC storage policy playback + migrate 5 bài jp-study-kit (metadata + known_words + cue_progress từ study.db; video upload khi lên Pro) + backup cron | Cát học được 5 bài cũ trên web/mobile |
-| **P1** | study-kit-mcp (auth pairing + 7 tools) + skill (Zoom → YouTube → upload) + lên Pro + upload 5 video cũ + manifest PWA + SETUP.md | Tạo bài mới end-to-end từ Claude Code |
+| **P1** | study-kit-mcp (auth pairing + 9 tools + ingest worker ffmpeg) + skill (Zoom → YouTube → video user) + lên Pro + upload 5 video cũ + manifest PWA + SETUP.md | Tạo bài mới end-to-end từ Claude Code |
 | **P1.5** | SRS (/review + enroll + đồng bộ known_words) | Ôn tập chạy với FSRS |
 | **P2** | YouTube player + share community + service worker + polish mobile | Mời đồng nghiệp (sau 利用申請) |
 | **P3** | Track 2: worker Claude CLI + billing — dùng lại packages/core + authoring guide | (spec riêng khi đến lúc) |
@@ -385,11 +419,18 @@ vingo/
   idempotency create_lesson.
 - RLS: test SQL (pgTAP hoặc supabase test) cho từng policy — đặc biệt: user lạ không đọc
   được bài private, không đọc được vocab qua RPC từ điển, không ghi được lesson gán owner khác.
-- MCP: integration test flow pairing + create_lesson bằng MCP inspector/client script.
+- MCP: integration test flow pairing + create_lesson bằng MCP inspector/client script;
+  test SSRF guard của ingest_video_from_url (URL private IP/metadata/redirect bị chặn);
+  test pipeline ingest với file HEVC (ra h264) + file h264 (chỉ remux) + URL chết (ra
+  `error` kèm ingest_error).
 - E2E smoke (Playwright): login → mở bài → seek theo câu → đánh dấu từ → từ điển thấy từ.
 - Checklist release: Supabase database advisors (security + performance) sạch.
 
 ## 10. Rủi ro & điểm mở
+- Transcode server-side trên container nhỏ chậm với video dài codec sai (HEVC 500MB có
+  thể mất nhiều phút CPU) — chấp nhận: job nền không chặn ai, skill poll và báo tiến độ;
+  đa số nguồn (Zoom) là h264 nên chỉ remux vài giây. Nếu thành nút cổ chai thật thì mới
+  cân nhắc nâng CPU/queue riêng.
 - yt-dlp có thể hỏng bất kỳ lúc nào (429/PO token/sub rỗng) → đã có đường STT MCP; nếu cả
   hai kẹt, user chọn nguồn khác. Chấp nhận.
 - Skill phát hiện "STT MCP khả dụng" là heuristic (tên tool thay đổi theo server) — viết
