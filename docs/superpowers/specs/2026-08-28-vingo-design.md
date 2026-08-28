@@ -30,6 +30,7 @@ thực hiện qua skill + MCP do mình cung cấp.
 | 11 | Auth app: **invite-only** — tắt public signup, mời qua Supabase Admin invite |
 | 12 | Transcript khi nguồn không có sẵn: dùng **STT MCP user đã có** (Soniox, ElevenLabs Scribe…). Không có thì skill dừng, báo rõ lý do. **Không ship hướng dẫn Whisper local/API trong MVP** (tính sau) |
 | 13 | Video vào hệ thống bằng **2 đường**: (A) chính — user đưa **direct-download link**, server tự tải; (B) phụ — file local trên máy user, upload qua signed URL. **ffmpeg chạy hoàn toàn server-side** (codec check, faststart, thumbnail) — creator không cần cài ffmpeg. Transcript user cung cấp nhận qua link direct / dán thẳng / file local, **bắt buộc có timestamp** |
+| 14 | Creator tận dụng hệ MCP có sẵn của Cát (repo transform-mcp): **video-download-mcp** (yt-dlp hosted riêng — caption YouTube qua `download_transcript`, tải video platform qua `start_download` → presigned URL MinIO đưa thẳng vào đường A), zoom-automation-mcp, soniox/elevenlabs MCP (STT). Creator KHÔNG cần cài yt-dlp/ffmpeg local; hạ tầng Vingo không bao giờ tự chạy yt-dlp |
 
 ### 1.3 Ngoài phạm vi MVP
 - Track 2 (server-side lesson generation, trả phí) — chỉ chừa sẵn kiến trúc.
@@ -43,7 +44,7 @@ thực hiện qua skill + MCP do mình cung cấp.
 ┌─ Máy user (creator) ─────────────────┐      ┌─ Cloud ──────────────────────────────┐
 │ Claude Code                          │      │  study-kit-mcp (Express + ffmpeg,    │
 │  ├─ skill `study-kit` (orchestration)│─MCP─▶│   Docker, 1 instance luôn-bật)       │
-│  ├─ zoom-us-mcp / yt-dlp (caption)   │      │   ├─ packages/core (service layer)   │
+│  ├─ zoom-mcp / video-download-mcp   │      │   ├─ packages/core (service layer)   │
 │  ├─ STT MCP của user (Soniox/11Labs) │      │   │    │ user-JWT (RLS)              │
 │  └─ transcript user đưa              │      │   └─ ingest worker (job nền):        │
 │     (link direct / dán / file local) │      │      tải video (URL hoặc Storage) →  │
@@ -295,11 +296,12 @@ sống trong `get_authoring_guide`, skill chỉ trỏ tới.
 1. **Transcript có sẵn** (từ nguồn hoặc do user cung cấp):
    - Zoom: zoom-us-mcp (`resolve_recording_link`, `get_recording_transcript`) — như
      SKILL.md hiện tại; yêu cầu `has_transcript: true`.
-   - YouTube: yt-dlp trên máy user — `yt-dlp -U` trước; `--write-auto-subs --sub-format json3
-     --skip-download` (sub thường: `--write-subs`); dedup rolling caption + gộp/tách lại thành
-     câu tự nhiên bằng word-level timing của json3 (rule nằm trong authoring guide).
-     Server/track-2 KHÔNG bao giờ tự fetch caption (ToS + chặn IP datacenter); track 2 nguồn
-     YouTube bắt buộc client gửi kèm transcript.
+   - YouTube: **video-download-mcp** của user (`download_transcript(url, sub_langs,
+     auto_subs)` → job → poll `get_download_status` → URL file sub srt/vtt có timestamp,
+     Claude tải về đọc). Không cần yt-dlp local. Vẫn phải dedup rolling caption của
+     auto-sub + gộp/tách lại thành câu tự nhiên (rule nằm trong authoring guide).
+     Hạ tầng Vingo (study-kit-mcp/track-2) KHÔNG bao giờ tự fetch caption (ToS);
+     track 2 nguồn YouTube bắt buộc client gửi kèm transcript.
    - **User cung cấp trực tiếp**: link direct-download (Claude tự tải về đọc), dán thẳng
      vào chat, hoặc file local — nhận mọi format phổ biến (VTT/SRT/JSON/text có mốc giờ).
      **Ràng buộc cứng: transcript phải có timestamp** — không có thì không sync câu với
@@ -316,7 +318,9 @@ sống trong `get_authoring_guide`, skill chỉ trỏ tới.
   `get_recording_video_url` → đưa thẳng cho `ingest_video_from_url` (đường A, token URL
   sống ~1h nên gọi ingest ngay sau khi lấy URL). Không tải video về máy user nữa.
 - YouTube: không tải video, không thumb (web derive `i.ytimg.com/vi/{id}/hqdefault.jpg`).
-- Video user: có direct link → đường A; file local → đường B (curl PUT signed URL).
+- Video user: có direct link → đường A; nằm trên platform (nội dung user có quyền) →
+  video-download-mcp `start_download` → presigned URL MinIO (TTL 6h) → đưa URL đó vào
+  đường A; file local → đường B (curl PUT signed URL).
 - Codec check (HEVC → h264/aac), remux `+faststart`, thumbnail, duration: tất cả do
   **pipeline ffmpeg server-side** làm (mục 4.2) — áp dụng đồng nhất cho mọi nguồn và
   cho track 2 sau này. Skill chỉ cần poll `get_ingest_status` tới khi `ready`/`error`
@@ -384,8 +388,9 @@ Interface: `load, play, pause, seekTo, getCurrentTime, getRate, setRate, onTime,
   rule ẩn thông tin nhạy cảm trong authoring guide; chạy 利用申請 nội bộ (skill
   secure-scaffold) trước khi mời đồng nghiệp dùng.
 - **Onboarding 2 vai trò**: consumer = browser, zero setup; creator = Claude Code +
-  SETUP.md 1 trang (2 lệnh `claude mcp add/login`, cách cài skill; yt-dlp chỉ cần khi
-  làm bài từ YouTube — KHÔNG cần ffmpeg). Tuần đầu creator ≈ một mình Cát — chấp nhận
+  SETUP.md 1 trang (cách cài skill + `claude mcp add/login` cho study-kit-mcp và các MCP
+  nguồn tuỳ nhu cầu: video-download-mcp cho YouTube/platform, zoom-mcp, STT MCP —
+  KHÔNG cần cài yt-dlp/ffmpeg local). Tuần đầu creator ≈ một mình Cát — chấp nhận
   có ý thức; số creator thực tế là dữ liệu định giá track 2.
 - **MCP hosting**: 1 container luôn-bật (min_machines_running=1 / tắt auto-stop), không
   scale ngang (session + ingest job in-memory). Image có ffmpeg, disk tạm ~1–2GB cho
@@ -431,8 +436,10 @@ vingo/
   thể mất nhiều phút CPU) — chấp nhận: job nền không chặn ai, skill poll và báo tiến độ;
   đa số nguồn (Zoom) là h264 nên chỉ remux vài giây. Nếu thành nút cổ chai thật thì mới
   cân nhắc nâng CPU/queue riêng.
-- yt-dlp có thể hỏng bất kỳ lúc nào (429/PO token/sub rỗng) → đã có đường STT MCP; nếu cả
-  hai kẹt, user chọn nguồn khác. Chấp nhận.
+- yt-dlp (trong video-download-mcp) có thể hỏng bất kỳ lúc nào — 429/PO token/sub rỗng,
+  và server đó chạy từ IP datacenter nên rủi ro bị YouTube chặn cao hơn máy cá nhân →
+  đã có đường STT MCP làm fallback; nếu cả hai kẹt, user chọn nguồn khác. Chấp nhận
+  (video-download-mcp là tool riêng của Cát, ngoài phạm vi vận hành Vingo).
 - Skill phát hiện "STT MCP khả dụng" là heuristic (tên tool thay đổi theo server) — viết
   dạng hướng dẫn nhận diện + hỏi user, không hard-code danh sách.
 - Whisper (local/API) deliberately deferred — quyết định #12; khi cần sẽ thêm như một
