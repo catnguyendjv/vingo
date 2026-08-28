@@ -387,10 +387,13 @@ Interface: `load, play, pause, seekTo, getCurrentTime, getRate, setRate, onTime,
 - **Privacy/compliance**: region Tokyo; bài zoom mặc định private + dialog xác nhận share;
   rule ẩn thông tin nhạy cảm trong authoring guide; chạy 利用申請 nội bộ (skill
   secure-scaffold) trước khi mời đồng nghiệp dùng.
-- **Onboarding 2 vai trò**: consumer = browser, zero setup; creator = Claude Code +
-  SETUP.md 1 trang (cách cài skill + `claude mcp add/login` cho study-kit-mcp và các MCP
-  nguồn tuỳ nhu cầu: video-download-mcp cho YouTube/platform, zoom-mcp, STT MCP —
-  KHÔNG cần cài yt-dlp/ffmpeg local). Tuần đầu creator ≈ một mình Cát — chấp nhận
+- **Onboarding 2 vai trò**: consumer = browser, zero setup; creator = bất kỳ môi trường
+  Claude nào kết nối được remote MCP — Claude Code CLI/desktop, **Cowork, cloud session
+  (claude.ai/code) kể cả từ mobile browser** — vì creator flow chỉ gồm gọi MCP + biên tập
+  transcript (ffmpeg/yt-dlp đều server-side, không phụ thuộc máy user). SETUP.md 1 trang:
+  cách cài skill + add/login study-kit-mcp và các MCP nguồn tuỳ nhu cầu (video-download-mcp,
+  zoom-mcp, STT MCP). Giới hạn: **đường B (file local) chỉ dùng được trên desktop CLI**
+  (mobile/cloud không nhận file video lớn). Tuần đầu creator ≈ một mình Cát — chấp nhận
   có ý thức; số creator thực tế là dữ liệu định giá track 2.
 - **MCP hosting**: 1 container luôn-bật (min_machines_running=1 / tắt auto-stop), không
   scale ngang (session + ingest job in-memory). Image có ffmpeg, disk tạm ~1–2GB cho
@@ -445,3 +448,8 @@ vingo/
 - Whisper (local/API) deliberately deferred — quyết định #12; khi cần sẽ thêm như một
   lựa chọn ưu tiên 2.5 không đổi kiến trúc.
 - Track 2 chi tiết (queue, billing, giới hạn YouTube phía server) để spec riêng ở P3.
+- Verify ở P1: add + OAuth login study-kit-mcp từ một Cowork/cloud session (docs xác nhận
+  cloud sessions hỗ trợ MCP nhưng chưa mô tả UI add/login cụ thể) — mục tiêu: creator
+  tạo bài end-to-end từ điện thoại qua cloud session. Video từ điện thoại (file local
+  trên máy) chưa hỗ trợ ở MVP; hướng sau: minio-automation-mcp làm chỗ trung chuyển
+  ra direct link rồi đi đường A.
