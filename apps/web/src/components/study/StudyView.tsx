@@ -25,35 +25,52 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   const supabase = useMemo(() => createClient(), []);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set(initialDoneCueIds));
   const [knownTerms, setKnownTerms] = useState<Set<string>>(new Set(initialKnownTerms));
+  const [editMode, setEditMode] = useState(false);
+  const [localCues, setLocalCues] = useState(cues);
+  const [localVocab, setLocalVocab] = useState(vocab);
+
+  const saveCueText = async (cueId: string, patch: { text_source?: string; text_target?: string }) => {
+    setLocalCues((cs) => cs.map((c) => (c.id === cueId ? { ...c, ...patch } : c)));
+    await supabase.from("cues").update(patch).eq("id", cueId);
+  };
+  const addVocab = async (cueId: string, term: string, reading: string, meaning: string) => {
+    const row = { id: crypto.randomUUID(), lesson_id: lesson.id, cue_id: cueId, term, reading: reading || null, meaning, sort: null };
+    setLocalVocab((v) => [...v, row]);
+    await supabase.from("vocab_items").insert(row);
+  };
+  const removeVocab = async (id: string) => {
+    setLocalVocab((v) => v.filter((x) => x.id !== id));
+    await supabase.from("vocab_items").delete().eq("id", id);
+  };
 
   useEffect(() => {
     if (!videoRef.current) return;
     const player = new Html5PlayerAdapter(videoRef.current);
     playerRef.current = player;
     const off = player.onTime((ms) => {
-      setActiveIdx(findActiveCueIndex(cues, ms));
+      setActiveIdx(findActiveCueIndex(localCues, ms));
       const ab = abRef.current;
       if (ab && ms >= ab.end) player.seekTo(ab.start);
     });
     const m = location.hash.match(/^#cue=(\d+)$/);
     if (m) {
-      const cue = cues.find((c) => c.idx === Number(m[1]));
+      const cue = localCues.find((c) => c.idx === Number(m[1]));
       if (cue) player.seekTo(cue.start_ms);
     }
     return () => { off(); player.destroy(); };
-  }, [cues]);
+  }, [localCues]);
 
-  const seekToCue = (i: number) => { playerRef.current?.seekTo(cues[i].start_ms); playerRef.current?.play(); };
+  const seekToCue = (i: number) => { playerRef.current?.seekTo(localCues[i].start_ms); playerRef.current?.play(); };
   const toggleAb = () => {
     if (abRange) return setAbRange(null);
-    if (activeIdx >= 0) setAbRange({ start: cues[activeIdx].start_ms, end: cues[activeIdx].end_ms });
+    if (activeIdx >= 0) setAbRange({ start: localCues[activeIdx].start_ms, end: localCues[activeIdx].end_ms });
   };
   const changeRate = (r: number) => { setRate(r); playerRef.current?.setRate(r); };
   const vocabByCue = useMemo(() => {
     const m = new Map<string, VocabRow[]>();
-    for (const v of vocab) { const arr = m.get(v.cue_id) ?? []; arr.push(v); m.set(v.cue_id, arr); }
+    for (const v of localVocab) { const arr = m.get(v.cue_id) ?? []; arr.push(v); m.set(v.cue_id, arr); }
     return m;
-  }, [vocab]);
+  }, [localVocab]);
 
   const toggleDone = async (cue: CueRow) => {
     const next = new Set(doneIds);
@@ -67,12 +84,12 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   };
   const markUpToActive = async () => {
     if (activeIdx < 0) return;
-    const rows = cues.slice(0, activeIdx + 1).map((c) => ({ cue_id: c.id, lesson_id: lesson.id, user_id: userId }));
+    const rows = localCues.slice(0, activeIdx + 1).map((c) => ({ cue_id: c.id, lesson_id: lesson.id, user_id: userId }));
     setDoneIds(new Set([...doneIds, ...rows.map((r) => r.cue_id)]));
     await supabase.from("cue_progress").upsert(rows);
   };
   const continueStudy = () => {
-    const i = nextUndoneIndex(cues, doneIds);
+    const i = nextUndoneIndex(localCues, doneIds);
     if (i >= 0) seekToCue(i);
   };
   const toggleKnown = async (term: string, reading: string | null, meaning: string | null) => {
@@ -107,12 +124,13 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
           </button>
           <button onClick={markUpToActive} className="rounded border px-2 py-1">✓ Đã học tới câu đang phát</button>
           <button onClick={continueStudy} className="rounded border px-2 py-1">▶ Tiếp tục</button>
-          <span className="text-xs text-gray-500">{doneIds.size}/{cues.length} câu</span>
+          <span className="text-xs text-gray-500">{doneIds.size}/{localCues.length} câu</span>
+          {canEdit && <button onClick={() => setEditMode((e) => !e)} className={`rounded border px-2 py-1 ${editMode ? "bg-black text-white" : ""}`}>✎ Sửa</button>}
         </div>
       </div>
       <div>
-        <CueList cues={cues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue} vocabByCue={vocabByCue} doneIds={doneIds} onToggleDone={toggleDone} />
-        <VocabPanel vocab={vocab} knownTerms={knownTerms} onToggleKnown={toggleKnown} activeCueId={activeIdx >= 0 ? cues[activeIdx].id : null} />
+        <CueList cues={localCues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue} vocabByCue={vocabByCue} doneIds={doneIds} onToggleDone={toggleDone} editMode={editMode} onSaveCue={saveCueText} />
+        <VocabPanel vocab={localVocab} knownTerms={knownTerms} onToggleKnown={toggleKnown} activeCueId={activeIdx >= 0 ? localCues[activeIdx].id : null} editMode={editMode} onAdd={(term, reading, meaning) => activeIdx >= 0 && addVocab(localCues[activeIdx].id, term, reading, meaning)} onRemove={removeVocab} />
       </div>
     </main>
   );
