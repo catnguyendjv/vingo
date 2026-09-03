@@ -21,6 +21,7 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   const [abRange, setAbRange] = useState<{ start: number; end: number } | null>(null);
   const abRef = useRef(abRange);
   abRef.current = abRange;
+  const hashSeekDone = useRef(false);
 
   const supabase = useMemo(() => createClient(), []);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set(initialDoneCueIds));
@@ -52,9 +53,12 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
       const ab = abRef.current;
       if (ab && ms >= ab.end) player.seekTo(ab.start);
     });
-    const m = location.hash.match(/^#cue=(\d+)$/);
-    if (m) {
-      const cue = localCues.find((c) => c.idx === Number(m[1]));
+    if (!hashSeekDone.current) {
+      hashSeekDone.current = true;
+      const mIdx = location.hash.match(/^#cue=(\d+)$/);
+      const mId = location.hash.match(/^#cueid=([0-9a-f-]{36})$/);
+      const cue = mIdx ? localCues.find((c) => c.idx === Number(mIdx[1]))
+               : mId ? localCues.find((c) => c.id === mId[1]) : undefined;
       if (cue) player.seekTo(cue.start_ms);
     }
     return () => { off(); player.destroy(); };
