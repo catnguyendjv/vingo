@@ -3,6 +3,8 @@ on:
   schedule:
     - cron: "0 18 * * *"   # 18:00 UTC = 03:00 JST
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   dump:
     runs-on: ubuntu-latest
@@ -11,14 +13,16 @@ jobs:
         with: { version: latest }
       - name: Dump database
         run: |
+          supabase db dump --db-url "$SUPABASE_DB_URL" --role-only -f roles.sql
           supabase db dump --db-url "$SUPABASE_DB_URL" -f schema.sql
-          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only -f data.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" --data-only --schema auth,public -f data.sql
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       - uses: actions/upload-artifact@v4
         with:
           name: db-backup-${{ github.run_id }}
           path: |
+            roles.sql
             schema.sql
             data.sql
           retention-days: 90
