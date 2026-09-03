@@ -7,7 +7,13 @@ const BADGE: Record<string, { label: string; cls: string }> = {
   error: { label: "lỗi xử lý video", cls: "bg-red-100 text-red-700" },
 };
 
-export function LessonCard({ lesson, thumbUrl }: { lesson: LessonRow; thumbUrl: string | null }) {
+export function LessonCard({
+  lesson, thumbUrl, progress,
+}: {
+  lesson: LessonRow;
+  thumbUrl: string | null;
+  progress?: { done: number; total: number };
+}) {
   const badge = BADGE[lesson.status];
   return (
     <Link href={`/lessons/${lesson.id}`} className="block overflow-hidden rounded-lg border hover:shadow">
@@ -17,6 +23,17 @@ export function LessonCard({ lesson, thumbUrl }: { lesson: LessonRow; thumbUrl: 
       <div className="p-3">
         <p className="font-medium">{lesson.title}</p>
         <p className="text-xs text-gray-500">{lesson.lesson_date ?? ""}</p>
+        {progress && progress.total > 0 && (
+          <div className="mt-1">
+            <div className="h-1 w-full rounded bg-gray-200">
+              <div
+                className="h-1 rounded bg-black"
+                style={{ width: `${Math.min(100, (progress.done / progress.total) * 100)}%` }}
+              />
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500">{progress.done}/{progress.total} câu</p>
+          </div>
+        )}
         {badge && <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs ${badge.cls}`}>{badge.label}</span>}
         {lesson.status === "error" && lesson.ingest_error && (
           <p className="mt-1 text-xs text-red-600">{lesson.ingest_error}</p>

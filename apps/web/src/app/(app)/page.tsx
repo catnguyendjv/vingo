@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getThumbUrl } from "@/lib/video";
 import type { LessonRow } from "@/lib/types";
@@ -7,13 +8,34 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const { tab = "mine" } = await searchParams;
   const supabase = await createServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  let query = supabase.from("lessons").select("*").is("deleted_at", null).order("lesson_date", { ascending: false });
+  if (!user) redirect("/login");
+  let query = supabase.from("lessons").select("*").is("deleted_at", null)
+    .order("lesson_date", { ascending: false, nullsFirst: false });
   query = tab === "community"
     ? query.eq("visibility", "community").eq("status", "ready")
-    : query.eq("owner_id", user!.id);
+    : query.eq("owner_id", user.id);
   const { data: lessons } = await query;
+  const lessonIds = (lessons ?? []).map((l: LessonRow) => l.id);
+
+  const [{ data: doneRows }, { data: cueRows }] = await Promise.all([
+    lessonIds.length
+      ? supabase.from("cue_progress").select("lesson_id").eq("user_id", user.id).in("lesson_id", lessonIds)
+      : Promise.resolve({ data: [] as { lesson_id: string }[] }),
+    lessonIds.length
+      ? supabase.from("cues").select("lesson_id").in("lesson_id", lessonIds)
+      : Promise.resolve({ data: [] as { lesson_id: string }[] }),
+  ]);
+  const doneByLesson = new Map<string, number>();
+  for (const row of doneRows ?? []) doneByLesson.set(row.lesson_id, (doneByLesson.get(row.lesson_id) ?? 0) + 1);
+  const totalByLesson = new Map<string, number>();
+  for (const row of cueRows ?? []) totalByLesson.set(row.lesson_id, (totalByLesson.get(row.lesson_id) ?? 0) + 1);
+
   const withThumbs = await Promise.all(
-    (lessons ?? []).map(async (l: LessonRow) => ({ lesson: l, thumb: await getThumbUrl(supabase, l) })),
+    (lessons ?? []).map(async (l: LessonRow) => ({
+      lesson: l,
+      thumb: await getThumbUrl(supabase, l, user.id),
+      progress: { done: doneByLesson.get(l.id) ?? 0, total: totalByLesson.get(l.id) ?? 0 },
+    })),
   );
   return (
     <main>
@@ -23,7 +45,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       </div>
       {withThumbs.length === 0 && <p className="text-gray-500">Chưa có bài học nào.</p>}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {withThumbs.map(({ lesson, thumb }) => <LessonCard key={lesson.id} lesson={lesson} thumbUrl={thumb} />)}
+        {withThumbs.map(({ lesson, thumb, progress }) => (
+          <LessonCard key={lesson.id} lesson={lesson} thumbUrl={thumb} progress={progress} />
+        ))}
       </div>
     </main>
   );

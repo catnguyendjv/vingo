@@ -7,7 +7,7 @@ export type DictEntry = {
   occurrences: number; lesson_ids: string[]; cue_ids: string[]; is_known: boolean;
 };
 
-export function DictionaryTable({ entries }: { entries: DictEntry[] }) {
+export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; userId: string }) {
   const supabase = useMemo(() => createClient(), []);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "known" | "unknown">("all");
@@ -24,13 +24,12 @@ export function DictionaryTable({ entries }: { entries: DictEntry[] }) {
   const toggleKnown = async (e: DictEntry) => {
     const key = `${e.lang}:${e.term}`;
     const next = new Set(known);
-    const { data: { user } } = await supabase.auth.getUser();
     if (next.has(key)) {
       next.delete(key); setKnown(next);
       await supabase.from("known_words").delete().match({ lang: e.lang, term: e.term });
     } else {
       next.add(key); setKnown(next);
-      await supabase.from("known_words").upsert({ user_id: user!.id, lang: e.lang, term: e.term, reading: e.reading, meaning: e.meaning });
+      await supabase.from("known_words").upsert({ user_id: userId, lang: e.lang, term: e.term, reading: e.reading, meaning: e.meaning });
     }
   };
 
