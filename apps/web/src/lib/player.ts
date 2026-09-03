@@ -20,7 +20,7 @@ export class Html5PlayerAdapter implements PlayerAdapter {
     };
     this.raf = requestAnimationFrame(tick);
   }
-  play() { void this.video.play(); }
+  play() { this.video.play().catch(() => {}); }
   pause() { this.video.pause(); }
   seekTo(ms: number) { this.video.currentTime = ms / 1000; }
   getCurrentTimeMs() { return Math.round(this.video.currentTime * 1000); }
