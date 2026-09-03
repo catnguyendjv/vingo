@@ -1,0 +1,7 @@
+{
+  "name": "vingo",
+  "private": true,
+  "engines": { "node": ">=22.5" },
+  "scripts": { "test": "pnpm -r test", "typecheck": "pnpm -r typecheck" },
+  "packageManager": "pnpm@10.29.2"
+}
