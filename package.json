@@ -10,6 +10,10 @@
   },
   "packageManager": "pnpm@10.29.2",
   "dependencies": {
-    "@supabase/supabase-js": "^2.114.0"
+    "@supabase/supabase-js": "^2.114.0",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
   }
 }
