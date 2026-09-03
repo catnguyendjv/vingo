@@ -1,1 +1,1 @@
-export const SHARED_OK = true;
+export * from "./lesson.js";
