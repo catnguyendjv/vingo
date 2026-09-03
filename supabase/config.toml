@@ -197,6 +197,10 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
+# NOTE: KHÔNG đặt false — dù tên gợi ý "signup", key này map thẳng vào
+# GOTRUE_EXTERNAL_EMAIL_ENABLED, tắt luôn cả đăng nhập email/password của user đã được mời
+# (đã verify bằng curl: đăng nhập trả về lỗi "email_provider_disabled"). Việc chặn signup công khai
+# đã do [auth] enable_signup = false (GOTRUE_DISABLE_SIGNUP=true) đảm nhiệm ở trên rồi.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
