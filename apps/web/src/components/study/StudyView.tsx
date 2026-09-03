@@ -2,8 +2,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CueRow, LessonRow, VocabRow } from "@/lib/types";
 import { Html5PlayerAdapter, type PlayerAdapter } from "@/lib/player";
-import { findActiveCueIndex } from "@/lib/cues";
+import { findActiveCueIndex, nextUndoneIndex } from "@/lib/cues";
+import { createClient } from "@/lib/supabase/client";
 import { CueList } from "./CueList";
+import { VocabPanel } from "./VocabPanel";
 
 export type StudyViewProps = {
   lesson: LessonRow; cues: CueRow[]; vocab: VocabRow[]; videoUrl: string | null;
@@ -19,6 +21,10 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   const [abRange, setAbRange] = useState<{ start: number; end: number } | null>(null);
   const abRef = useRef(abRange);
   abRef.current = abRange;
+
+  const supabase = useMemo(() => createClient(), []);
+  const [doneIds, setDoneIds] = useState<Set<string>>(new Set(initialDoneCueIds));
+  const [knownTerms, setKnownTerms] = useState<Set<string>>(new Set(initialKnownTerms));
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -49,6 +55,39 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
     return m;
   }, [vocab]);
 
+  const toggleDone = async (cue: CueRow) => {
+    const next = new Set(doneIds);
+    if (next.has(cue.id)) {
+      next.delete(cue.id); setDoneIds(next);
+      await supabase.from("cue_progress").delete().eq("cue_id", cue.id);
+    } else {
+      next.add(cue.id); setDoneIds(next);
+      await supabase.from("cue_progress").upsert({ cue_id: cue.id, lesson_id: lesson.id, user_id: userId });
+    }
+  };
+  const markUpToActive = async () => {
+    if (activeIdx < 0) return;
+    const rows = cues.slice(0, activeIdx + 1).map((c) => ({ cue_id: c.id, lesson_id: lesson.id, user_id: userId }));
+    setDoneIds(new Set([...doneIds, ...rows.map((r) => r.cue_id)]));
+    await supabase.from("cue_progress").upsert(rows);
+  };
+  const continueStudy = () => {
+    const i = nextUndoneIndex(cues, doneIds);
+    if (i >= 0) seekToCue(i);
+  };
+  const toggleKnown = async (term: string, reading: string | null, meaning: string | null) => {
+    const next = new Set(knownTerms);
+    if (next.has(term)) {
+      next.delete(term); setKnownTerms(next);
+      await supabase.from("known_words").delete().match({ lang: lesson.source_lang, term });
+    } else {
+      next.add(term); setKnownTerms(next);
+      await supabase.from("known_words").upsert({
+        user_id: userId, lang: lesson.source_lang, term, reading, meaning, first_lesson_id: lesson.id,
+      });
+    }
+  };
+
   return (
     <main className="grid gap-4 lg:grid-cols-[1fr_420px]">
       <div>
@@ -66,9 +105,15 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
           <button onClick={() => setShowTarget((s) => !s)} className="rounded border px-2 py-1">
             {showTarget ? "Ẩn" : "Hiện"} bản dịch
           </button>
+          <button onClick={markUpToActive} className="rounded border px-2 py-1">✓ Đã học tới câu đang phát</button>
+          <button onClick={continueStudy} className="rounded border px-2 py-1">▶ Tiếp tục</button>
+          <span className="text-xs text-gray-500">{doneIds.size}/{cues.length} câu</span>
         </div>
       </div>
-      <CueList cues={cues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue} vocabByCue={vocabByCue} />
+      <div>
+        <CueList cues={cues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue} vocabByCue={vocabByCue} doneIds={doneIds} onToggleDone={toggleDone} />
+        <VocabPanel vocab={vocab} knownTerms={knownTerms} onToggleKnown={toggleKnown} activeCueId={activeIdx >= 0 ? cues[activeIdx].id : null} />
+      </div>
     </main>
   );
 }
