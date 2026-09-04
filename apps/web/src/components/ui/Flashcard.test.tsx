@@ -48,6 +48,18 @@ describe("Flashcard", () => {
       expect(spy).toHaveBeenCalledTimes(1);
       expect(card.classList.contains("fc-flipped")).toBe(false);
     });
+
+    it("chạm nút mặt sau → thẻ đóng và không còn focus-within", () => {
+      render(<Flashcard {...base} onToggleKnown={() => {}} />);
+      const card = screen.getByTestId("flashcard");
+      fireEvent.click(screen.getByRole("button", { name: "採用状況: đánh dấu đã thuộc" }));
+      const backButton = screen.getByRole("button", { name: "✓ Đã thuộc" });
+      fireEvent.focus(backButton);
+      fireEvent.click(backButton);
+      expect(card.classList.contains("fc-flipped")).toBe(false);
+      expect(card.querySelector(".fc-back")?.getAttribute("aria-hidden")).toBe("true");
+      expect(card.contains(document.activeElement)).toBe(false);
+    });
   });
 
   it("known → gạch ngang, aria-label đổi, data-known=true", () => {

@@ -78,9 +78,6 @@ test.describe("mobile 390", () => {
     await card.getByRole("button", { name: wasKnown ? "Bỏ đã thuộc" : "✓ Đã thuộc" }).tap();
     await expect(card).toHaveAttribute("data-known", String(!wasKnown));
     await expect(card).not.toHaveClass(/fc-flipped/);
-    // Nút mặt sau vẫn giữ focus sau khi tap → `.fc:focus-within .fc-back` khiến mặt sau
-    // tiếp tục che mặt trước dù đã bỏ class fc-flipped. Bỏ focus để mặt trước nhận tap tiếp theo.
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 
     // trả lại trạng thái cũ
     await card.locator(".fc-front").tap();

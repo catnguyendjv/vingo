@@ -29,6 +29,8 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
     else setFlipped((f) => !f);
   };
 
+  const closeBack = (el: HTMLElement) => { setFlipped(false); setFocused(false); el.blur(); };
+
   return (
     <div
       data-testid="flashcard" data-known={known ? "true" : "false"}
@@ -60,7 +62,7 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
           <button
             type="button"
             tabIndex={revealed ? 0 : -1}
-            onClick={(e) => { e.stopPropagation(); onToggleKnown(); setFlipped(false); }}
+            onClick={(e) => { e.stopPropagation(); onToggleKnown(); closeBack(e.currentTarget); }}
             className="rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] font-medium hover:border-muted"
           >
             {known ? "Bỏ đã thuộc" : "✓ Đã thuộc"}
@@ -68,7 +70,7 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
           <button
             type="button"
             tabIndex={revealed ? 0 : -1}
-            onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+            onClick={(e) => { e.stopPropagation(); closeBack(e.currentTarget); }}
             className="rounded-full px-2 py-0.5 text-[11px] text-muted"
           >
             Đóng
