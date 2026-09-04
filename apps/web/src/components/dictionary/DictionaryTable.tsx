@@ -67,7 +67,9 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
           <SegmentedControl ariaLabel="Lọc theo trạng thái" tight value={filter} onChange={setFilter} items={FILTERS} />
           <span className="md:hidden">{countPill}</span>
           <IconButton label="Tải CSV" onClick={exportCsv} className="md:hidden"><Icon name="download" className="size-[18px]" /></IconButton>
-          <Button onClick={exportCsv} className="hidden md:inline-flex"><Icon name="download" className="size-[17px]" />CSV</Button>
+          <span className="hidden md:inline-flex">
+            <Button onClick={exportCsv}><Icon name="download" className="size-[17px]" />CSV</Button>
+          </span>
           <span className="ml-auto hidden md:inline">{countPill}</span>
         </div>
       </div>
