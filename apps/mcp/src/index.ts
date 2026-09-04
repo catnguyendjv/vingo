@@ -114,6 +114,15 @@ export function createApp() {
 
 // Chạy server khi start trực tiếp; bỏ qua khi import trong test (vitest set VITEST).
 if (!process.env.VITEST) {
+  // Lưới an toàn: job ingest chạy nền (tải/transcode). Một lỗi/'error' event lạc
+  // (vd abort stream) KHÔNG được giết cả server — chỉ log để không rớt phiên đang chạy.
+  process.on("unhandledRejection", (reason) => {
+    console.error("[mcp] unhandledRejection:", reason);
+  });
+  process.on("uncaughtException", (err) => {
+    console.error("[mcp] uncaughtException:", err);
+  });
+
   createApp().listen(config.port, () => {
     console.log(`study-kit-mcp: ${config.baseUrl}/mcp  (web ${config.webUrl})`);
   });

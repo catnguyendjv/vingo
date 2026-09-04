@@ -1,6 +1,7 @@
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
-import { Writable } from "node:stream";
+import { Transform, Writable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { request } from "undici";
 
 export class SsrfError extends Error {}
@@ -154,19 +155,27 @@ export async function guardedDownload(
       throw new SsrfError(`content-type không phải video: ${ctStr ?? "(trống)"}`);
     }
 
-    // Stream + đếm byte thực (không tin Content-Length).
+    // Stream + đếm byte thực (không tin Content-Length), cap size.
+    // Dùng stream.pipeline: nó gắn error handler cho MỌI stream trong chuỗi và huỷ
+    // sạch khi lỗi/abort — biến 'error' event (vd undici RequestAbortedError khi
+    // AbortSignal.timeout kích hoạt) thành promise rejection, thay vì làm sập process.
     let bytes = 0;
-    for await (const chunk of res.body) {
-      bytes += chunk.length;
-      if (bytes > opts.maxBytes) {
-        res.body.destroy();
-        throw new SsrfError(`vượt giới hạn ${opts.maxBytes} byte`);
-      }
-      if (!sink.write(chunk)) {
-        await new Promise<void>((resolve) => sink.once("drain", resolve));
-      }
+    const counter = new Transform({
+      transform(chunk: Buffer, _enc, cb) {
+        bytes += chunk.length;
+        if (bytes > opts.maxBytes) {
+          cb(new SsrfError(`vượt giới hạn ${opts.maxBytes} byte`));
+          return;
+        }
+        cb(null, chunk);
+      },
+    });
+    try {
+      await pipeline(res.body, counter, sink);
+    } catch (e) {
+      res.body.destroy();
+      throw e;
     }
-    await new Promise<void>((resolve, reject) => sink.end((err?: Error) => (err ? reject(err) : resolve())));
     return { contentType: ctStr!.split(";")[0].trim().toLowerCase(), bytes };
   }
   throw new SsrfError("không tải được (hết redirect)");
