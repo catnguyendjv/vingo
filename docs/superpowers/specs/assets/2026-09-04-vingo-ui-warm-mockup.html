@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vingo — hướng "Ấm áp"</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --canvas:#F1EAE0;
+  --bg:#FAF6F0;
+  --surface:#FFFFFF;
+  --surface-2:#F3ECE3;
+  --text:#2B2118;
+  --muted:#7A6A5C;
+  --border:#EADFD3;
+  --accent:#B84A22;
+  --accent-fg:#FFFFFF;
+  --accent-soft:#FBE7DC;
+  --active-cue:#FFF1E6;
+  --success:#18806A;
+  --success-soft:#DDF1EA;
+  --warning:#955F12;
+  --warning-soft:#FBEFD6;
+  --danger:#B3412F;
+  --danger-soft:#FADDD7;
+  --video:#1A120D;
+  --shadow:0 1px 2px rgba(60,40,20,.05),0 10px 28px -14px rgba(60,40,20,.22);
+  --shadow-sm:0 1px 2px rgba(60,40,20,.08);
+  --r-xl:24px;--r-lg:18px;--r-md:14px;--r-sm:10px;--pill:999px;
+  --font-body:"Be Vietnam Pro","Zen Kaku Gothic New",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-jp:"Zen Kaku Gothic New","Be Vietnam Pro","Hiragino Sans","Yu Gothic UI","Noto Sans JP",sans-serif;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --canvas:#141110;--bg:#1C1714;--surface:#26201C;--surface-2:#2F2721;--text:#F3EAE1;--muted:#A89684;--border:#3A312B;
+  --accent:#E8825A;--accent-fg:#1C1714;--accent-soft:#3D2A20;--active-cue:#3B2A21;
+  --success:#4CC0A0;--success-soft:#1F3A33;--warning:#E0A84A;--warning-soft:#3B2F1C;--danger:#E8735F;--danger-soft:#43241F;
+  --video:#0F0B09;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);--shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --canvas:#141110;--bg:#1C1714;--surface:#26201C;--surface-2:#2F2721;--text:#F3EAE1;--muted:#A89684;--border:#3A312B;
+    --accent:#E8825A;--accent-fg:#1C1714;--accent-soft:#3D2A20;--active-cue:#3B2A21;
+    --success:#4CC0A0;--success-soft:#1F3A33;--warning:#E0A84A;--warning-soft:#3B2F1C;--danger:#E8735F;--danger-soft:#43241F;
+    --video:#0F0B09;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -14px rgba(0,0,0,.6);--shadow-sm:0 1px 2px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+
+/* ============ BASE ============ */
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--canvas);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;transition:background-color .25s,color .25s}
+.jp,[lang="ja"]{font-family:var(--font-jp);font-feature-settings:"palt" 1}
+a{color:inherit}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.page{max-width:1200px;margin:0 auto;padding:32px 24px 120px}
+.caption{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);opacity:.85;margin:56px 0 12px;display:flex;gap:10px;align-items:center}
+.caption::after{content:"";flex:1;height:1px;background:var(--border)}
+.caption:first-child{margin-top:0}
+.intro{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+.intro h1{font-size:28px;margin:0;letter-spacing:-.02em;font-weight:700}
+.intro p{margin:4px 0 0;color:var(--muted);max-width:640px}
+.swatches{display:flex;gap:6px}
+.swatches span{width:26px;height:26px;border-radius:9px;border:1px solid var(--border)}
+
+/* App frame (desktop mock) */
+.app{background:var(--bg);border:1px solid var(--border);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden}
+.app-body{padding:20px 28px 28px}
+
+/* ============ HEADER ============ */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;border-bottom:1px solid var(--border);background:var(--bg)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:19px;letter-spacing:-.02em;text-decoration:none}
+.logo .mark{width:30px;height:30px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:var(--accent-fg)}
+.logo .mark svg{width:16px;height:16px;fill:currentColor;stroke:none}
+.nav{display:flex;align-items:center;gap:6px}
+.navlink{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--pill);font-weight:500;text-decoration:none;color:var(--text);transition:background .15s}
+.navlink:hover{background:var(--surface-2)}
+.navlink .sub{font-family:var(--font-jp);color:var(--muted);font-weight:500}
+.iconbtn{width:38px;height:38px;border-radius:var(--pill);display:grid;place-items:center;color:var(--muted);transition:background .15s,color .15s}
+.iconbtn:hover{background:var(--surface-2);color:var(--text)}
+.ghost{color:var(--muted)}
+
+/* ============ BUTTONS ============ */
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 16px;border-radius:var(--pill);border:1px solid var(--border);background:var(--surface);font-weight:500;line-height:1;transition:background .15s,border-color .15s,transform .1s,box-shadow .15s;white-space:nowrap}
+.btn:hover{background:var(--surface-2);border-color:var(--muted)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600;box-shadow:0 6px 16px -8px var(--accent)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.btn.soft{background:var(--surface-2);border-color:transparent}
+.btn.sm{min-height:34px;padding:0 12px;font-size:13px}
+.btn .i{width:17px;height:17px}
+
+/* Segmented */
+.seg{display:inline-flex;background:var(--surface-2);padding:4px;border-radius:var(--pill);gap:2px}
+.seg button{padding:7px 16px;border-radius:var(--pill);font-weight:500;color:var(--muted);white-space:nowrap;transition:background .15s,color .15s}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow-sm)}
+.seg.tight button{padding:6px 11px;font-size:13px}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:var(--pill);font-size:12px;font-weight:600;line-height:1.3}
+.badge .i{width:13px;height:13px}
+.badge.draft{background:var(--surface-2);color:var(--muted)}
+.badge.processing{background:var(--warning-soft);color:var(--warning)}
+.badge.error{background:var(--danger-soft);color:var(--danger)}
+.badge.done{background:var(--success-soft);color:var(--success)}
+.badge.learning{background:var(--accent-soft);color:var(--accent)}
+
+/* Progress ring */
+.ring{width:36px;height:36px;flex:none}
+.ring circle{fill:none;stroke-width:3.4;stroke-linecap:round}
+.ring .track{stroke:var(--border)}
+.ring .fill{stroke:var(--accent);transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray .6s cubic-bezier(.2,.8,.2,1)}
+.ring.ok .fill{stroke:var(--success)}
+.ring.lg{width:52px;height:52px}
+.ringwrap{position:relative;display:grid;place-items:center}
+.ringwrap .lbl{position:absolute;font-size:10px;font-weight:700;letter-spacing:-.02em}
+.ring.ok + .lbl{color:var(--success)}
+
+/* Inputs */
+.field{position:relative;display:flex;align-items:center}
+.field .i{position:absolute;left:12px;color:var(--muted);pointer-events:none}
+.input{width:100%;min-height:42px;padding:0 14px 0 40px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface);transition:border-color .15s,box-shadow .15s}
+.input.plain{padding-left:14px}
+.input::placeholder{color:var(--muted);opacity:.8}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.select{appearance:none;min-height:42px;padding:0 38px 0 14px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface) no-repeat right 12px center;background-size:16px;cursor:pointer}
+.selwrap{position:relative;display:inline-flex;align-items:center}
+.selwrap .i{position:absolute;right:12px;color:var(--muted);pointer-events:none;width:16px;height:16px}
+
+/* Checkbox (learned) */
+.chk{width:26px;height:26px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface);display:grid;place-items:center;color:transparent;flex:none;transition:background .18s,border-color .18s,color .18s;position:relative}
+.chk .i{width:15px;height:15px;stroke-width:2.6}
+.chk:hover{border-color:var(--muted)}
+.chk.on{background:var(--success);border-color:var(--success);color:#fff;animation:pop .35s cubic-bezier(.2,.8,.2,1)}
+.chk.on::after{content:"";position:absolute;inset:-4px;border-radius:13px;border:2px solid var(--success);opacity:0;animation:halo .5s ease-out}
+.chk.round{border-radius:var(--pill)}
+.chk.round.on::after{border-radius:var(--pill)}
+@keyframes pop{0%{transform:scale(.82)}55%{transform:scale(1.14)}100%{transform:scale(1)}}
+@keyframes halo{0%{opacity:.7;transform:scale(.9)}100%{opacity:0;transform:scale(1.35)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ============ LIBRARY ============ */
+.lib-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.lib-top h2{margin:0;font-size:22px;letter-spacing:-.02em}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+@media (max-width:1000px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{display:block;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;text-decoration:none;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--muted)}
+.thumb{aspect-ratio:16/9;position:relative;display:grid;place-items:center;overflow:hidden}
+.thumb::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,255,255,.28),transparent 45%),repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 14px)}
+.thumb .i{position:relative;width:44px;height:44px;stroke-width:1.4;opacity:.85}
+.thumb .dur{position:absolute;right:10px;bottom:10px;font-size:11.5px;font-weight:600;background:rgba(20,12,8,.72);color:#fff;padding:3px 8px;border-radius:var(--pill)}
+.t-warm{background:linear-gradient(135deg,#F4B98F 0%,#C2532A 55%,#6E2A12 100%);color:#FFF3EA}
+.t-teal{background:linear-gradient(135deg,#A9DFCF 0%,#1F8A70 55%,#0C3F33 100%);color:#EAF8F3}
+.t-draft{background:linear-gradient(135deg,var(--surface-2),var(--border));color:var(--muted)}
+.t-err{background:linear-gradient(135deg,var(--surface-2),var(--danger-soft));color:var(--danger)}
+.card-body{padding:14px 16px 16px}
+.card h3{margin:0 0 6px;font-size:15px;line-height:1.45;font-weight:600;font-family:var(--font-jp);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:44px}
+.meta{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px}
+.meta .i{width:14px;height:14px}
+.card-foot{margin-top:14px;display:flex;align-items:center;gap:12px}
+.card-foot .txt{display:flex;flex-direction:column;line-height:1.25}
+.card-foot b{font-size:14px;font-weight:600}
+.card-foot small{color:var(--muted);font-size:12px}
+.ingest{margin:8px 0 0;font-size:12px;color:var(--danger);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--danger-soft);padding:6px 10px;border-radius:8px;word-break:break-all}
+
+/* ============ STUDY DESKTOP ============ */
+.study{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:24px}
+@media (max-width:960px){.study{grid-template-columns:1fr}}
+.study h2{margin:0 0 14px;font-size:20px;line-height:1.4;letter-spacing:-.01em;font-family:var(--font-jp)}
+.video{aspect-ratio:16/9;background:var(--video);border-radius:var(--r-lg);display:grid;place-items:center;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.video::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(232,130,90,.18),transparent 60%)}
+.play{width:72px;height:72px;border-radius:var(--pill);background:rgba(255,255,255,.14);backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff;position:relative;transition:transform .15s,background .15s;border:1px solid rgba(255,255,255,.2)}
+.play:hover{transform:scale(1.05);background:rgba(255,255,255,.22)}
+.play svg{width:30px;height:30px;fill:currentColor;stroke:none;margin-left:4px}
+.video.empty{background:var(--surface-2);box-shadow:none;border:1px dashed var(--border);color:var(--muted)}
+.dock{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg)}
+.dock .sp{flex:1}
+.dock .count{display:flex;align-items:center;gap:10px;padding:0 6px}
+.dock .count b{font-size:15px;font-weight:600}
+.dock .count small{display:block;color:var(--muted);font-size:11.5px;line-height:1.2}
+.speed{display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.hint{margin-top:12px;font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center}
+
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);display:flex;flex-direction:column;overflow:hidden}
+.panel-h{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border)}
+.panel-h h3{margin:0;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.panel-h .btn{white-space:nowrap}
+.panel-h h3 .n{color:var(--muted);font-weight:500}
+.cues{list-style:none;margin:0;padding:8px;max-height:440px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin}
+.cue{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:10px 12px;border-radius:var(--r-md);cursor:pointer;position:relative;transition:background .15s}
+.cue:hover{background:var(--surface-2)}
+.cue .src{font-family:var(--font-jp);font-size:15.5px;line-height:1.6;margin:0;color:var(--text)}
+.cue .tgt{margin:3px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
+.cue .voc{margin:6px 0 0;font-size:12.5px;color:var(--accent);display:flex;flex-wrap:wrap;gap:4px 10px}
+.cue .voc .rd{color:var(--muted)}
+.cue .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cue .ts{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none;opacity:.8}
+.cue.done .src{color:var(--muted)}
+.cue.active{background:var(--active-cue)}
+.cue.active::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:3px;background:var(--accent)}
+.cue.active .src{font-weight:500;color:var(--text)}
+.cue.active .tgt{color:var(--text);opacity:.8}
+.warn{display:inline-flex;align-items:center;gap:4px;color:var(--warning);font-size:12px;font-weight:600;vertical-align:middle;margin-right:4px}
+.warn .i{width:14px;height:14px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px}
+.chip{display:inline-flex;flex-direction:column;align-items:flex-start;gap:0;padding:7px 12px 6px;border-radius:12px;border:1px solid var(--border);background:var(--bg);text-align:left;transition:border-color .15s,background .15s,transform .1s;position:relative}
+.chip:hover{border-color:var(--muted);background:var(--surface-2)}
+.chip:active{transform:scale(.97)}
+.chip .t{font-family:var(--font-jp);font-size:15px;font-weight:500;line-height:1.3;display:flex;align-items:center;gap:6px}
+.chip .r{font-size:11px;color:var(--muted);line-height:1.3;font-family:var(--font-jp)}
+.chip.cur{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.chip.known .t{text-decoration:line-through;color:var(--muted);text-decoration-color:var(--muted)}
+.chip.known{background:transparent;border-style:dashed}
+.chip .ok{width:14px;height:14px;stroke:var(--success);stroke-width:3;display:none}
+.chip.known .ok{display:block}
+.chip .x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:var(--pill);background:var(--danger);color:#fff;display:grid;place-items:center;font-size:11px;line-height:1}
+.editrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-top:1px dashed var(--border);background:var(--surface-2)}
+.editrow .lab{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;width:100%}
+.editrow .input{min-height:36px;font-size:13px;padding-left:12px;width:auto;flex:1;min-width:80px}
+
+/* ============ PHONE ============ */
+.phones{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:390px;height:780px;flex:none;border-radius:44px;border:9px solid #2A221E;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 60px -30px rgba(40,25,15,.45);position:relative}
+.phone .note{position:absolute;left:50%;top:0;transform:translateX(-50%);width:110px;height:26px;background:#2A221E;border-radius:0 0 16px 16px;z-index:5}
+.m-top{flex:none;background:var(--bg);z-index:3;box-shadow:0 8px 16px -14px rgba(0,0,0,.35)}
+.m-bar{display:flex;align-items:center;gap:8px;padding:34px 12px 8px}
+.m-bar .ttl{flex:1;min-width:0;font-family:var(--font-jp);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-video{margin:0 12px;aspect-ratio:16/9;border-radius:16px;background:var(--video);display:grid;place-items:center;position:relative;overflow:hidden}
+.m-video::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(232,130,90,.18),transparent 60%)}
+.m-video .play{width:58px;height:58px}
+.m-video .play svg{width:24px;height:24px}
+.m-tabs{display:flex;justify-content:space-between;align-items:center;padding:10px 12px 8px}
+.m-scroll{flex:1;overflow-y:auto;padding:4px 8px 12px;scrollbar-width:none}
+.m-scroll::-webkit-scrollbar{display:none}
+.m-scroll .cue .src{font-size:17px;line-height:1.55}
+.m-scroll .cue .tgt{font-size:13.5px}
+.m-scroll .cue{padding:12px 10px}
+.m-scroll .cue .chk{width:28px;height:28px}
+.m-scroll .cue{grid-template-columns:28px minmax(0,1fr)}
+.m-dock{flex:none;display:flex;gap:4px;padding:8px 8px 22px;background:var(--surface);border-top:1px solid var(--border)}
+.m-dock button{flex:1;min-height:58px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;color:var(--muted);transition:background .15s,color .15s}
+.m-dock button .i{width:22px;height:22px}
+.m-dock button:hover{background:var(--surface-2)}
+.m-dock button.on{background:var(--accent-soft);color:var(--accent)}
+.m-dock button.primary{background:var(--accent);color:var(--accent-fg)}
+.m-dock button .big{font-size:16px;font-weight:700;letter-spacing:-.02em;line-height:22px}
+.m-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 6px}
+.m-chips .chip{padding:9px 14px 8px}
+.m-chips .chip .t{font-size:17px}
+.m-chips .chip .r{font-size:12px}
+.m-sec{display:flex;align-items:center;justify-content:space-between;padding:10px 8px 6px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.m-sec .btn{text-transform:none;letter-spacing:0}
+.pill-note{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);color:var(--muted);border-radius:var(--pill);padding:4px 10px;font-size:11.5px}
+
+/* ============ DICTIONARY ============ */
+.dict-wrap{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.dict-desk{flex:1 1 560px;min-width:0}
+.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.toolbar .field{flex:1 1 220px;max-width:380px}
+.toolbar .cnt{margin-left:auto;color:var(--muted);font-weight:500}
+.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.tbl th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr{transition:background .12s}
+.tbl tbody tr:hover{background:var(--surface-2)}
+.tbl .term{font-family:var(--font-jp);font-size:16px;font-weight:500}
+.tbl .read{font-family:var(--font-jp);color:var(--muted)}
+.tbl tr.known .term{text-decoration:line-through;color:var(--muted)}
+.n{display:inline-flex;align-items:center;justify-content:center;min-width:32px;padding:2px 8px;border-radius:var(--pill);background:var(--surface-2);font-size:12px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.link{display:inline-flex;align-items:center;gap:4px;color:var(--accent);font-weight:600;text-decoration:none;font-size:13px;white-space:nowrap}
+.tbl .term,.tbl .n,.toolbar .cnt,.m-tools .cnt{white-space:nowrap}
+.link .i{width:14px;height:14px}
+.link:hover{text-decoration:underline}
+.tblwrap{overflow-x:auto}
+.d-list{display:flex;flex-direction:column;gap:8px;padding:6px 4px}
+.d-item{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md)}
+.d-item .term{font-family:var(--font-jp);font-size:17px;font-weight:500;line-height:1.3}
+.d-item .read{font-family:var(--font-jp);font-size:12.5px;color:var(--muted)}
+.d-item .mean{margin-top:4px;font-size:14px}
+.d-item .foot{margin-top:8px;display:flex;align-items:center;gap:10px}
+.d-item.known .term{text-decoration:line-through;color:var(--muted)}
+.d-item.known .mean{color:var(--muted)}
+.m-hd{padding:36px 16px 6px}
+.m-hd h3{margin:0;font-size:20px;letter-spacing:-.01em}
+.m-hd h3 .jp{color:var(--muted);font-weight:500;font-size:16px;margin-right:6px}
+.m-tools{padding:6px 12px 10px;display:flex;flex-direction:column;gap:10px}
+.m-tools .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+
+/* ============ LOGIN ============ */
+.login{min-height:520px;display:grid;place-items:center;padding:32px;background:radial-gradient(ellipse at 30% 0%,var(--accent-soft),transparent 55%),var(--bg)}
+.login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:32px;box-shadow:var(--shadow)}
+.login-card .logo{margin-bottom:22px}
+.login-card h2{margin:0 0 6px;font-size:22px;letter-spacing:-.02em}
+.login-card p{margin:0 0 22px;color:var(--muted)}
+.login-card form{display:flex;flex-direction:column;gap:12px}
+.login-card .btn{justify-content:center;min-height:46px;margin-top:4px}
+.login-card .foot{margin-top:18px;font-size:12.5px;color:var(--muted);text-align:center}
+
+/* Floating theme toggle */
+.fab{position:fixed;right:20px;bottom:20px;z-index:50;width:48px;height:48px;border-radius:var(--pill);background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow);display:grid;place-items:center;color:var(--text);transition:transform .15s}
+.fab:hover{transform:translateY(-2px)}
+.fab .moon{display:none}
+:root[data-theme="dark"] .fab .sun{display:none}
+:root[data-theme="dark"] .fab .moon{display:block}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .fab .sun{display:none}:root:not([data-theme="light"]) .fab .moon{display:block}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-checks" viewBox="0 0 24 24"><path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 4v16l10-8z"/><path d="M19 5v14"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-videooff" viewBox="0 0 24 24"><path d="M10.66 6H14a2 2 0 0 1 2 2v2.5l5.248-3.062A.5.5 0 0 1 22 7.87v8.196"/><path d="M16 16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></symbol>
+  <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="3"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="3"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+</svg>
+
+<div class="page">
+
+  <div class="intro">
+    <div>
+      <h1>Vingo · hướng "Ấm áp"</h1>
+      <p>Thân thiện nhưng người lớn: kem nhạt / nâu đen ấm, cam đất làm điểm nhấn, xanh ngọc cho "đã học", bo góc lớn, vòng tiến độ, chip từ vựng như thẻ ghi nhớ. Chữ Việt: Be Vietnam Pro · Chữ Nhật: Zen Kaku Gothic New.</p>
+    </div>
+    <div class="swatches" aria-hidden="true">
+      <span style="background:var(--bg)"></span><span style="background:var(--surface)"></span><span style="background:var(--active-cue)"></span><span style="background:var(--accent)"></span><span style="background:var(--success)"></span><span style="background:var(--warning)"></span><span style="background:var(--danger)"></span><span style="background:var(--text)"></span>
+    </div>
+  </div>
+
+  <!-- ================= (a) THƯ VIỆN — DESKTOP ================= -->
+  <div class="caption">(a) Thư viện — desktop · /</div>
+  <div class="app">
+    <header class="hdr">
+      <a class="logo" href="#"><span class="mark"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></span>Vingo</a>
+      <nav class="nav">
+        <a class="navlink" href="#"><svg class="i"><use href="#i-book"/></svg><span class="sub" lang="ja">単語帳</span>Từ điển</a>
+        <button class="iconbtn" title="Đổi giao diện sáng/tối" data-toggle-theme><svg class="i"><use href="#i-sun"/></svg></button>
+        <button class="navlink ghost">Đăng xuất</button>
+      </nav>
+    </header>
+    <div class="app-body">
+      <div class="lib-top">
+        <h2>Thư viện</h2>
+        <div class="seg" role="tablist">
+          <button class="on" role="tab" aria-selected="true">Của tôi</button>
+          <button role="tab">Cộng đồng</button>
+        </div>
+      </div>
+      <div class="grid">
+        <!-- card đang học -->
+        <a class="card" href="#">
+          <div class="thumb t-warm"><svg class="i"><use href="#i-users"/></svg><span class="dur">1:12:04</span></div>
+          <div class="card-body">
+            <h3 lang="ja">採用状況・選考基準の相談 (2026-08-20) — 日本語学習版</h3>
+            <div class="meta"><svg class="i"><use href="#i-cal"/></svg>2026-08-20</div>
+            <div class="card-foot">
+              <svg class="ring" viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15.5"/><circle class="fill" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="6.4 100"/></svg>
+              <div class="txt"><b>37/576 câu</b><small>đang học · 6%</small></div>
+              <span class="badge learning" style="margin-left:auto">Tiếp tục</span>
+            </div>
+          </div>
+        </a>
+        <!-- card hoàn thành -->
+        <a class="card" href="#">
+          <div class="thumb t-teal"><svg class="i"><use href="#i-users"/></svg><span class="dur">18:30</span></div>
+          <div class="card-body">
+            <h3 lang="ja">Dr.JOY 全体会議 (2026-08-13) — 日本語学習版</h3>
+            <div class="meta"><svg class="i"><use href="#i-cal"/></svg>2026-08-13</div>
+            <div class="card-foot">
+              <svg class="ring ok" viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15.5"/><circle class="fill" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="100 100"/></svg>
+              <div class="txt"><b>140/140 câu</b><small>hoàn thành</small></div>
+              <span class="badge done" style="margin-left:auto"><svg class="i"><use href="#i-check"/></svg>Xong</span>
+            </div>
+          </div>
+        </a>
+        <!-- card nháp -->
+        <a class="card" href="#">
+          <div class="thumb t-draft"><svg class="i"><use href="#i-videooff"/></svg></div>
+          <div class="card-body">
+            <h3 lang="ja">研究開発の組織再編・採用方針 (2026-08-20 午後) — 日本語学習版</h3>
+            <div class="meta"><svg class="i"><use href="#i-cal"/></svg>2026-08-20</div>
+            <div class="card-foot">
+              <svg class="ring" viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15.5"/><circle class="fill" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="0 100"/></svg>
+              <div class="txt"><b>0/140 câu</b><small>chưa bắt đầu</small></div>
+              <span class="badge draft" style="margin-left:auto">nháp — chưa có video</span>
+            </div>
+          </div>
+        </a>
+        <!-- card lỗi -->
+        <a class="card" href="#">
+          <div class="thumb t-err"><svg class="i"><use href="#i-alert"/></svg></div>
+          <div class="card-body">
+            <h3 lang="ja">Dr.JOY 全体会議 (2026-08-06) — 日本語学習版</h3>
+            <div class="meta"><svg class="i"><use href="#i-cal"/></svg>2026-08-06</div>
+            <div class="card-foot">
+              <span class="badge error"><svg class="i"><use href="#i-alert"/></svg>lỗi xử lý video</span>
+            </div>
+            <p class="ingest">ffmpeg: moov atom not found (file tải lên chưa hoàn tất)</p>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= (b) TRANG HỌC — DESKTOP ================= -->
+  <div class="caption">(b) Trang học — desktop · /lessons/[id]</div>
+  <div class="app">
+    <header class="hdr">
+      <a class="logo" href="#"><span class="mark"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></span>Vingo</a>
+      <nav class="nav">
+        <a class="navlink" href="#"><svg class="i"><use href="#i-book"/></svg><span class="sub" lang="ja">単語帳</span>Từ điển</a>
+        <button class="iconbtn" title="Đổi giao diện sáng/tối" data-toggle-theme><svg class="i"><use href="#i-sun"/></svg></button>
+        <button class="navlink ghost">Đăng xuất</button>
+      </nav>
+    </header>
+    <div class="app-body">
+      <div class="study">
+        <div>
+          <h2 lang="ja">採用状況・選考基準の相談 (2026-08-20) — 日本語学習版</h2>
+          <div class="video" role="img" aria-label="Video 16:9">
+            <button class="play" aria-label="Phát"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></button>
+          </div>
+          <div class="dock" role="toolbar" aria-label="Điều khiển học">
+            <button class="btn on" aria-pressed="true"><svg class="i"><use href="#i-repeat"/></svg>Lặp câu</button>
+            <span class="speed">Tốc độ
+              <span class="seg tight" role="radiogroup">
+                <button>0.5×</button><button>0.75×</button><button class="on">1×</button><button>1.25×</button><button>1.5×</button>
+              </span>
+            </span>
+            <button class="btn"><svg class="i"><use href="#i-eyeoff"/></svg>Ẩn bản dịch</button>
+            <span class="sp"></span>
+            <button class="btn"><svg class="i"><use href="#i-checks"/></svg>Đã học tới câu đang phát</button>
+            <button class="btn primary"><svg class="i"><use href="#i-next"/></svg>Tiếp tục</button>
+            <span class="count">
+              <span class="ringwrap"><svg class="ring" viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15.5"/><circle class="fill" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="6.4 100"/></svg><span class="lbl">6%</span></span>
+              <span><b>37/576</b><small>câu đã học</small></span>
+            </span>
+            <button class="btn sm soft" title="Chỉ chủ bài"><svg class="i"><use href="#i-pencil"/></svg>Sửa</button>
+          </div>
+          <p class="hint"><svg class="i" style="width:15px;height:15px"><use href="#i-repeat"/></svg>Đang lặp câu #3 · bấm lại để tắt. Nhấn vào câu bất kỳ để nhảy tới.</p>
+        </div>
+
+        <div class="col">
+          <section class="panel">
+            <div class="panel-h">
+              <h3>Câu <span class="n">· 576</span></h3>
+              <span class="pill-note"><svg class="i" style="width:13px;height:13px"><use href="#i-spark"/></svg>tự cuộn theo câu đang phát</span>
+            </div>
+            <ol class="cues">
+              <li class="cue done">
+                <button class="chk on" aria-label="Đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja">えっと、今日は初日の予定です。</p><span class="ts">00:03</span></div>
+                  <p class="tgt">Ờ thì, hôm nay là lịch ngày đầu tiên.</p>
+                  <p class="voc"><span lang="ja">初日<span class="rd">（しょにち）</span></span> ngày đầu tiên</p>
+                </div>
+              </li>
+              <li class="cue done">
+                <button class="chk on" aria-label="Đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja">お疲れさまです。お願いします。</p><span class="ts">00:07</span></div>
+                  <p class="tgt">Chào anh. Nhờ anh nhé.</p>
+                </div>
+              </li>
+              <li class="cue active" aria-current="true">
+                <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja">えー、今日の仕事についてなんですけど、まず採用状況についての報告と、あの、組織図の変更と、あと今日経営会議の、まあ採用の、えっと、</p><span class="ts">00:12</span></div>
+                  <p class="tgt">Ờ, về công việc hôm nay: trước tiên là báo cáo tình hình tuyển dụng, rồi thay đổi sơ đồ tổ chức, và họp ban lãnh đạo hôm nay, phần tuyển dụng, ờ…</p>
+                  <p class="voc"><span lang="ja">採用状況<span class="rd">（さいようじょうきょう）</span></span> tình hình tuyển dụng</p>
+                </div>
+              </li>
+              <li class="cue">
+                <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja"><span class="warn" title="Câu chưa chắc"><svg class="i"><use href="#i-alert"/></svg></span>(Zoom の音声案内)</p><span class="ts">00:31</span></div>
+                  <p class="tgt">(Tiếng thông báo tự động của Zoom)</p>
+                </div>
+              </li>
+              <li class="cue">
+                <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja">入社の段階で、ある程度の課題感は共有しておきたいです。</p><span class="ts">00:38</span></div>
+                  <p class="tgt">Ở giai đoạn vào công ty, tôi muốn chia sẻ trước phần nào cảm nhận về vấn đề.</p>
+                  <p class="voc"><span lang="ja">入社<span class="rd">（にゅうしゃ）</span></span> vào công ty <span lang="ja">段階<span class="rd">（だんかい）</span></span> giai đoạn <span lang="ja">課題感<span class="rd">（かだいかん）</span></span> cảm nhận về vấn đề</p>
+                </div>
+              </li>
+              <li class="cue">
+                <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja">いつまでに落とすか、期限をロックしましょう。</p><span class="ts">00:46</span></div>
+                  <p class="tgt">Chốt hạn xem đến khi nào thì loại, nhé.</p>
+                  <p class="voc"><span lang="ja">いつまでに</span> đến khi nào <span lang="ja">期限<span class="rd">（きげん）</span></span> hạn <span lang="ja">ロックする</span> chốt, khoá</p>
+                </div>
+              </li>
+              <li class="cue">
+                <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+                <div>
+                  <div class="top"><p class="src" lang="ja">お願いします。</p><span class="ts">00:52</span></div>
+                  <p class="tgt">Nhờ anh nhé.</p>
+                </div>
+              </li>
+            </ol>
+          </section>
+
+          <section class="panel">
+            <div class="panel-h">
+              <h3>Từ vựng <span class="n">· 224</span></h3>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span class="seg tight"><button class="on">Câu này · 1</button><button>Tất cả · 224</button></span>
+                <button class="btn sm soft"><svg class="i"><use href="#i-eyeoff"/></svg>Ẩn từ thuộc</button>
+              </div>
+            </div>
+            <div class="chips">
+              <button class="chip" data-chip><span class="t" lang="ja">課題感<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">かだいかん</span></button>
+              <button class="chip cur" data-chip title="thuộc câu đang phát"><span class="t" lang="ja">採用状況<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">さいようじょうきょう</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">めちゃくちゃ<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">副詞</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">入社<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">にゅうしゃ</span></button>
+              <button class="chip known" data-chip><span class="t" lang="ja">ある程度<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">あるていど</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">下ろす<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">おろす</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">ロックする<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">動詞</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">段階<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">だんかい</span></button>
+              <button class="chip known" data-chip><span class="t" lang="ja">落とす<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">おとす</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">いつまでに<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">副詞</span></button>
+              <button class="chip" data-chip><span class="t" lang="ja">期限<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">きげん</span></button>
+            </div>
+            <div class="editrow">
+              <span class="lab">Khi bật ✎ Sửa (chủ bài) — chip có nút ✕ xoá, thêm từ vào câu đang phát</span>
+              <input class="input" placeholder="単語" lang="ja"><input class="input" placeholder="cách đọc" lang="ja"><input class="input" placeholder="nghĩa">
+              <button class="btn sm primary"><svg class="i"><use href="#i-plus"/></svg>Thêm vào câu #3</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= (c) TRANG HỌC — MOBILE ================= -->
+  <div class="caption">(c) Trang học — mobile 390px · video ghim trên, điều khiển ở đáy (vùng ngón cái), tab Câu / Từ vựng</div>
+  <div class="phones">
+    <!-- Phone 1: tab Câu -->
+    <div class="phone">
+      <div class="note"></div>
+      <div class="m-top">
+        <div class="m-bar">
+          <button class="iconbtn" aria-label="Về thư viện"><svg class="i"><use href="#i-back"/></svg></button>
+          <span class="ttl" lang="ja">採用状況・選考基準の相談 (2026-08-20) — 日本語学習版</span>
+          <button class="iconbtn" aria-label="Sửa (chủ bài)"><svg class="i"><use href="#i-pencil"/></svg></button>
+        </div>
+        <div class="m-video"><button class="play" aria-label="Phát"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></button></div>
+        <div class="m-tabs">
+          <span class="seg tight"><button class="on">Câu · 37/576</button><button>Từ vựng · 224</button></span>
+          <span class="ringwrap"><svg class="ring" viewBox="0 0 36 36"><circle class="track" cx="18" cy="18" r="15.5"/><circle class="fill" cx="18" cy="18" r="15.5" pathLength="100" stroke-dasharray="6.4 100"/></svg><span class="lbl">6%</span></span>
+        </div>
+      </div>
+      <div class="m-scroll">
+        <ol class="cues" style="max-height:none;overflow:visible;padding:0">
+          <li class="cue done">
+            <button class="chk on" aria-label="Đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="top"><p class="src" lang="ja">えっと、今日は初日の予定です。</p><span class="ts">00:03</span></div>
+              <p class="tgt">Ờ thì, hôm nay là lịch ngày đầu tiên.</p>
+              <p class="voc"><span lang="ja">初日<span class="rd">（しょにち）</span></span> ngày đầu tiên</p>
+            </div>
+          </li>
+          <li class="cue done">
+            <button class="chk on" aria-label="Đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="top"><p class="src" lang="ja">お疲れさまです。お願いします。</p><span class="ts">00:07</span></div>
+              <p class="tgt">Chào anh. Nhờ anh nhé.</p>
+            </div>
+          </li>
+          <li class="cue active" aria-current="true">
+            <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="top"><p class="src" lang="ja">えー、今日の仕事についてなんですけど、まず採用状況についての報告と、あの、組織図の変更と、あと今日経営会議の、まあ採用の、えっと、</p><span class="ts">00:12</span></div>
+              <p class="tgt">Ờ, về công việc hôm nay: trước tiên là báo cáo tình hình tuyển dụng, rồi thay đổi sơ đồ tổ chức, và họp ban lãnh đạo hôm nay, phần tuyển dụng, ờ…</p>
+              <p class="voc"><span lang="ja">採用状況<span class="rd">（さいようじょうきょう）</span></span> tình hình tuyển dụng</p>
+            </div>
+          </li>
+          <li class="cue">
+            <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="top"><p class="src" lang="ja"><span class="warn"><svg class="i"><use href="#i-alert"/></svg></span>(Zoom の音声案内)</p><span class="ts">00:31</span></div>
+              <p class="tgt">(Tiếng thông báo tự động của Zoom)</p>
+            </div>
+          </li>
+          <li class="cue">
+            <button class="chk" aria-label="Đánh dấu đã học" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="top"><p class="src" lang="ja">入社の段階で、ある程度の課題感は共有しておきたいです。</p><span class="ts">00:38</span></div>
+              <p class="tgt">Ở giai đoạn vào công ty, tôi muốn chia sẻ trước phần nào cảm nhận về vấn đề.</p>
+              <p class="voc"><span lang="ja">入社<span class="rd">（にゅうしゃ）</span></span> vào công ty <span lang="ja">段階<span class="rd">（だんかい）</span></span> giai đoạn</p>
+            </div>
+          </li>
+        </ol>
+      </div>
+      <div class="m-dock" role="toolbar">
+        <button class="on" aria-pressed="true"><svg class="i"><use href="#i-repeat"/></svg>Lặp câu</button>
+        <button><span class="big">1×</span>Tốc độ</button>
+        <button><svg class="i"><use href="#i-eyeoff"/></svg>Ẩn dịch</button>
+        <button><svg class="i"><use href="#i-checks"/></svg>Học tới đây</button>
+        <button class="primary"><svg class="i"><use href="#i-next"/></svg>Tiếp tục</button>
+      </div>
+    </div>
+
+    <!-- Phone 2: tab Từ vựng -->
+    <div class="phone">
+      <div class="note"></div>
+      <div class="m-top">
+        <div class="m-bar">
+          <button class="iconbtn" aria-label="Về thư viện"><svg class="i"><use href="#i-back"/></svg></button>
+          <span class="ttl" lang="ja">採用状況・選考基準の相談 (2026-08-20) — 日本語学習版</span>
+          <button class="iconbtn" aria-label="Sửa (chủ bài)"><svg class="i"><use href="#i-pencil"/></svg></button>
+        </div>
+        <div class="m-video"><button class="play" aria-label="Phát"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></button></div>
+        <div class="m-tabs">
+          <span class="seg tight"><button>Câu · 37/576</button><button class="on">Từ vựng · 224</button></span>
+          <button class="btn sm soft"><svg class="i"><use href="#i-eyeoff"/></svg>Ẩn từ thuộc</button>
+        </div>
+      </div>
+      <div class="m-scroll">
+        <div class="m-sec">Câu đang phát · #3</div>
+        <div class="m-chips">
+          <button class="chip cur" data-chip><span class="t" lang="ja">採用状況<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">さいようじょうきょう · tình hình tuyển dụng</span></button>
+        </div>
+        <div class="m-sec">Cả bài · 224 <span class="pill-note">chạm để đánh dấu đã thuộc</span></div>
+        <div class="m-chips">
+          <button class="chip" data-chip><span class="t" lang="ja">課題感<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">かだいかん</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">めちゃくちゃ<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">副詞</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">入社<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">にゅうしゃ</span></button>
+          <button class="chip known" data-chip><span class="t" lang="ja">ある程度<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">あるていど</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">下ろす<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">おろす</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">ロックする<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">動詞</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">段階<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">だんかい</span></button>
+          <button class="chip known" data-chip><span class="t" lang="ja">落とす<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">おとす</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">いつまでに<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">副詞</span></button>
+          <button class="chip" data-chip><span class="t" lang="ja">期限<svg class="i ok"><use href="#i-check"/></svg></span><span class="r" lang="ja">きげん</span></button>
+        </div>
+      </div>
+      <div class="m-dock" role="toolbar">
+        <button class="on" aria-pressed="true"><svg class="i"><use href="#i-repeat"/></svg>Lặp câu</button>
+        <button><span class="big">1×</span>Tốc độ</button>
+        <button><svg class="i"><use href="#i-eyeoff"/></svg>Ẩn dịch</button>
+        <button><svg class="i"><use href="#i-checks"/></svg>Học tới đây</button>
+        <button class="primary"><svg class="i"><use href="#i-next"/></svg>Tiếp tục</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= (d) TỪ ĐIỂN ================= -->
+  <div class="caption">(d) Từ điển — desktop bảng · mobile dạng thẻ · /dictionary</div>
+  <div class="dict-wrap">
+    <div class="app dict-desk">
+      <header class="hdr">
+        <a class="logo" href="#"><span class="mark"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></span>Vingo</a>
+        <nav class="nav">
+          <a class="navlink" href="#" style="background:var(--surface-2)"><svg class="i"><use href="#i-book"/></svg><span class="sub" lang="ja">単語帳</span>Từ điển</a>
+          <button class="iconbtn" title="Đổi giao diện sáng/tối" data-toggle-theme><svg class="i"><use href="#i-sun"/></svg></button>
+          <button class="navlink ghost">Đăng xuất</button>
+        </nav>
+      </header>
+      <div class="app-body">
+        <div class="lib-top">
+          <h2><span class="jp" lang="ja" style="color:var(--muted);font-weight:500;margin-right:8px">単語帳</span>Từ điển</h2>
+        </div>
+        <div class="toolbar">
+          <label class="field"><svg class="i"><use href="#i-search"/></svg><input class="input" placeholder="Tìm 単語 / cách đọc / nghĩa"></label>
+          <span class="selwrap"><select class="select"><option>Tất cả</option><option>Chưa thuộc</option><option>Đã thuộc</option></select><svg class="i"><use href="#i-down"/></svg></span>
+          <button class="btn"><svg class="i"><use href="#i-download"/></svg>CSV</button>
+          <span class="cnt">1000 từ</span>
+        </div>
+        <div class="tblwrap">
+        <table class="tbl">
+          <thead><tr><th style="width:48px"><svg class="i" style="width:14px;height:14px"><use href="#i-check"/></svg></th><th lang="ja">単語</th><th>Cách đọc</th><th>Nghĩa</th><th>×N</th><th>Câu</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><button class="chk round" aria-label="Đánh dấu đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button></td>
+              <td class="term" lang="ja">〜あたり</td><td class="read" lang="ja">あたり</td><td>cỡ…, khoảng…, đại loại là…</td><td><span class="n">×1</span></td><td><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></td>
+            </tr>
+            <tr>
+              <td><button class="chk round" aria-label="Đánh dấu đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button></td>
+              <td class="term" lang="ja">〜がち</td><td class="read" lang="ja">がち</td><td>hay bị…, dễ thành…</td><td><span class="n">×1</span></td><td><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></td>
+            </tr>
+            <tr class="known">
+              <td><button class="chk round on" aria-label="Đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button></td>
+              <td class="term" lang="ja">〜させていただく</td><td class="read" lang="ja">させていただく</td><td>xin phép được ~ (khiêm nhường ngữ)</td><td><span class="n">×3</span></td><td><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></td>
+            </tr>
+            <tr>
+              <td><button class="chk round" aria-label="Đánh dấu đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button></td>
+              <td class="term" lang="ja">採用状況</td><td class="read" lang="ja">さいようじょうきょう</td><td>tình hình tuyển dụng</td><td><span class="n">×4</span></td><td><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></td>
+            </tr>
+            <tr class="known">
+              <td><button class="chk round on" aria-label="Đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button></td>
+              <td class="term" lang="ja">ある程度</td><td class="read" lang="ja">あるていど</td><td>ở mức độ nào đó, phần nào</td><td><span class="n">×2</span></td><td><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- mobile dictionary -->
+    <div class="phone" style="height:720px">
+      <div class="note"></div>
+      <div class="m-top">
+        <div class="m-hd"><h3><span class="jp" lang="ja">単語帳</span>Từ điển</h3></div>
+        <div class="m-tools">
+          <label class="field"><svg class="i"><use href="#i-search"/></svg><input class="input" placeholder="Tìm 単語 / cách đọc / nghĩa"></label>
+          <div class="row">
+            <span class="seg tight"><button class="on">Tất cả</button><button>Chưa thuộc</button><button>Đã thuộc</button></span>
+            <span style="display:flex;align-items:center;gap:8px"><span class="cnt" style="color:var(--muted);font-size:13px">1000 từ</span><button class="iconbtn" aria-label="Xuất CSV" style="border:1px solid var(--border)"><svg class="i"><use href="#i-download"/></svg></button></span>
+          </div>
+        </div>
+      </div>
+      <div class="m-scroll">
+        <div class="d-list">
+          <div class="d-item">
+            <button class="chk round" aria-label="Đánh dấu đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="term" lang="ja">〜あたり <span class="read">あたり</span></div>
+              <div class="mean">cỡ…, khoảng…, đại loại là…</div>
+              <div class="foot"><span class="n">×1</span><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></div>
+            </div>
+          </div>
+          <div class="d-item">
+            <button class="chk round" aria-label="Đánh dấu đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="term" lang="ja">〜がち <span class="read">がち</span></div>
+              <div class="mean">hay bị…, dễ thành…</div>
+              <div class="foot"><span class="n">×1</span><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></div>
+            </div>
+          </div>
+          <div class="d-item known">
+            <button class="chk round on" aria-label="Đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="term" lang="ja">〜させていただく <span class="read">させていただく</span></div>
+              <div class="mean">xin phép được ~ (khiêm nhường ngữ)</div>
+              <div class="foot"><span class="n">×3</span><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></div>
+            </div>
+          </div>
+          <div class="d-item">
+            <button class="chk round" aria-label="Đánh dấu đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="term" lang="ja">採用状況 <span class="read">さいようじょうきょう</span></div>
+              <div class="mean">tình hình tuyển dụng</div>
+              <div class="foot"><span class="n">×4</span><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></div>
+            </div>
+          </div>
+          <div class="d-item known">
+            <button class="chk round on" aria-label="Đã thuộc" data-chk><svg class="i"><use href="#i-check"/></svg></button>
+            <div>
+              <div class="term" lang="ja">ある程度 <span class="read">あるていど</span></div>
+              <div class="mean">ở mức độ nào đó, phần nào</div>
+              <div class="foot"><span class="n">×2</span><a class="link" href="#">mở câu<svg class="i"><use href="#i-open"/></svg></a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= (e) ĐĂNG NHẬP ================= -->
+  <div class="caption">(e) Đăng nhập · /login</div>
+  <div class="app" style="max-width:720px">
+    <div class="login">
+      <div class="login-card">
+        <a class="logo" href="#"><span class="mark"><svg viewBox="0 0 24 24"><use href="#i-play"/></svg></span>Vingo</a>
+        <h2>Đăng nhập</h2>
+        <p>Đăng nhập bằng tài khoản được mời.</p>
+        <form onsubmit="return false">
+          <label class="field"><svg class="i"><use href="#i-mail"/></svg><input class="input" type="email" placeholder="Email" autocomplete="username"></label>
+          <label class="field"><svg class="i"><use href="#i-lock"/></svg><input class="input" type="password" placeholder="Mật khẩu" autocomplete="current-password"></label>
+          <button class="btn primary" type="submit">Đăng nhập</button>
+        </form>
+        <div class="foot">Học tiếng Nhật từ video họp · <span lang="ja">日本語学習版</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<button class="fab" data-toggle-theme aria-label="Đổi giao diện sáng/tối">
+  <svg class="i sun"><use href="#i-sun"/></svg>
+  <svg class="i moon"><use href="#i-moon"/></svg>
+</button>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function current(){return root.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');}
+  document.querySelectorAll('[data-toggle-theme]').forEach(function(b){
+    b.addEventListener('click',function(){root.dataset.theme=current()==='dark'?'light':'dark';});
+  });
+  window.addEventListener('message',function(e){ if(e.data&&e.data.theme) root.dataset.theme=e.data.theme; });
+
+  // Vi-mô cảm xúc: đánh dấu đã học / đã thuộc
+  document.querySelectorAll('[data-chk]').forEach(function(c){
+    c.addEventListener('click',function(ev){
+      ev.stopPropagation();
+      c.classList.remove('on'); void c.offsetWidth; // restart animation
+      if(c.dataset.on){delete c.dataset.on;}else{c.dataset.on='1';c.classList.add('on');}
+      var isOn=!!c.dataset.on, row=c.closest('.cue,tr,.d-item');
+      if(row){ if(row.classList.contains('cue')) row.classList.toggle('done',isOn); else row.classList.toggle('known',isOn); }
+    });
+    if(c.classList.contains('on')) c.dataset.on='1';
+  });
+  document.querySelectorAll('[data-chip]').forEach(function(ch){
+    ch.addEventListener('click',function(){ch.classList.toggle('known');});
+  });
+})();
+</script>
+</body>
+</html>
