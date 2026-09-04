@@ -48,5 +48,5 @@ Dev user (idempotent theo email): `SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=�
 ## Quy ước
 
 - Commit message tiếng Anh, prefix `feat/fix/test/chore/docs`, mô tả và tài liệu nội bộ viết tiếng Việt.
-- Quy trình phát triển theo plugin superpowers (brainstorm → spec → plan → subagent-driven implementation); spec/plan mới đặt trong `docs/superpowers/`.
+- Plugin superpowers CHỈ dùng cho phần lên kế hoạch (brainstorm → spec → plan, đặt trong `docs/superpowers/`). Không dùng superpowers để code hay test: sau khi có plan, tự triển khai và chạy test trực tiếp (không subagent-driven-development, không TDD/verification skill của superpowers).
 - Không bật Google OAuth và không mở signup (quyết định #11 trong spec gốc).
