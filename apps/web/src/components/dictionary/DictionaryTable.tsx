@@ -56,14 +56,14 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
   };
 
   const openHref = (e: DictEntry) => `/lessons/${e.lesson_ids[0]}#cueid=${e.cue_ids[0]}`;
-  const countPill = <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs tabular-nums text-muted">{rows.length} từ</span>;
+  const countPill = <span className="whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-xs tabular-nums text-muted">{rows.length} từ</span>;
 
   return (
     <div className="flex flex-col gap-3">
       {/* Toolbar */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
         <Input icon="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm 単語 / cách đọc / nghĩa" className="w-full md:max-w-[380px]" />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl ariaLabel="Lọc theo trạng thái" tight value={filter} onChange={setFilter} items={FILTERS} />
           <span className="md:hidden">{countPill}</span>
           <IconButton label="Tải CSV" onClick={exportCsv} className="md:hidden"><Icon name="download" className="size-[18px]" /></IconButton>
@@ -87,7 +87,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
               const k = known.has(keyOf(e));
               return (
                 <tr key={keyOf(e)} data-term={e.term} className="border-t border-line transition-colors hover:bg-surface-2">
-                  <td className="px-4 py-2.5"><Checkbox round checked={k} onChange={() => toggleKnown(e)} label={`${e.term}: đã thuộc`} /></td>
+                  <td className="px-4 py-2.5"><Checkbox round checked={k} onChange={() => toggleKnown(e)} label={`${e.term}: ${k ? "bỏ đánh dấu đã thuộc" : "đánh dấu đã thuộc"}`} /></td>
                   <td lang="ja" className={cn("px-3 py-2.5 font-jp text-base font-medium", k && "line-through text-muted")}>{e.term}</td>
                   <td lang="ja" className="px-3 py-2.5 font-jp text-muted">{e.reading}</td>
                   <td className="px-3 py-2.5">{e.meaning}</td>
@@ -110,7 +110,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
           const k = known.has(keyOf(e));
           return (
             <li key={keyOf(e)} data-term={e.term} className="flex gap-3 rounded-lg border border-line bg-surface p-3">
-              <Checkbox round size="lg" checked={k} onChange={() => toggleKnown(e)} label={`${e.term}: đã thuộc`} className="mt-0.5" />
+              <Checkbox round size="lg" checked={k} onChange={() => toggleKnown(e)} label={`${e.term}: ${k ? "bỏ đánh dấu đã thuộc" : "đánh dấu đã thuộc"}`} className="mt-0.5" />
               <div className="min-w-0 flex-1">
                 <p lang="ja" className="font-jp text-[17px] font-medium leading-tight">
                   <span className={cn(k && "line-through text-muted")}>{e.term}</span>
