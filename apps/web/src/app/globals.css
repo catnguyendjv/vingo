@@ -1,26 +1,137 @@
 @import "tailwindcss";
 
+/* ===== Token thô (tên theo spec 2.1). 1) light mặc định ===== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #F1EAE0;
+  --bg: #FAF6F0;
+  --surface: #FFFFFF;
+  --surface-2: #F3ECE3;
+  --text: #2B2118;
+  --muted: #7A6A5C;
+  --border: #EADFD3;
+  --accent: #B84A22;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #FBE7DC;
+  --active-cue: #FFF1E6;
+  --success: #18806A;
+  --success-soft: #DDF1EA;
+  --warning: #955F12;
+  --warning-soft: #FBEFD6;
+  --danger: #B3412F;
+  --danger-soft: #FADDD7;
+  --video: #1A120D;
+  --elev-1: 0 1px 2px rgba(60, 40, 20, .05), 0 10px 28px -14px rgba(60, 40, 20, .22);
+  --elev-0: 0 1px 2px rgba(60, 40, 20, .08);
+  --ff-body: var(--font-be-vietnam), var(--font-zen-kaku), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ff-jp: var(--font-zen-kaku), "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* 2) người dùng chọn dark */
+:root[data-theme="dark"] {
+  --canvas: #141110; --bg: #1C1714; --surface: #26201C; --surface-2: #2F2721;
+  --text: #F3EAE1; --muted: #A89684; --border: #3A312B;
+  --accent: #E8825A; --accent-fg: #1C1714; --accent-soft: #3D2A20; --active-cue: #3B2A21;
+  --success: #4CC0A0; --success-soft: #1F3A33; --warning: #E0A84A; --warning-soft: #3B2F1C;
+  --danger: #E8735F; --danger-soft: #43241F; --video: #0F0B09;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 30px -14px rgba(0, 0, 0, .6);
+  --elev-0: 0 1px 2px rgba(0, 0, 0, .35);
+  color-scheme: dark;
 }
 
+/* 3) theo hệ (không stamp) — guard để chọn light thắng hệ dark */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --canvas: #141110; --bg: #1C1714; --surface: #26201C; --surface-2: #2F2721;
+    --text: #F3EAE1; --muted: #A89684; --border: #3A312B;
+    --accent: #E8825A; --accent-fg: #1C1714; --accent-soft: #3D2A20; --active-cue: #3B2A21;
+    --success: #4CC0A0; --success-soft: #1F3A33; --warning: #E0A84A; --warning-soft: #3B2F1C;
+    --danger: #E8735F; --danger-soft: #43241F; --video: #0F0B09;
+    --elev-1: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 30px -14px rgba(0, 0, 0, .6);
+    --elev-0: 0 1px 2px rgba(0, 0, 0, .35);
+    color-scheme: dark;
   }
 }
 
+/* ===== Map vào Tailwind v4 ===== */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-page: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-active-cue: var(--active-cue);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-video: var(--video);
+  --font-sans: var(--ff-body);
+  --font-jp: var(--ff-jp);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-card: var(--elev-1);
+  --shadow-sm: var(--elev-0);
+  --ease-soft: cubic-bezier(.2, .8, .2, 1);
+}
+
+/* ===== Base ===== */
+html, body { margin: 0; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--ff-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .25s, color .25s;
+}
+[lang="ja"], .font-jp { font-feature-settings: "palt" 1; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* ===== ThemeToggle: icon theo theme đang hiệu lực (kể cả khi theo hệ) ===== */
+.theme-icon-moon { display: none; }
+:root[data-theme="dark"] .theme-icon-sun { display: none; }
+:root[data-theme="dark"] .theme-icon-moon { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-icon-sun { display: none; }
+  :root:not([data-theme="light"]) .theme-icon-moon { display: block; }
+}
+
+/* ===== Checkbox pop ===== */
+@keyframes pop { 0% { transform: scale(.82); } 60% { transform: scale(1.14); } 100% { transform: scale(1); } }
+.animate-pop { animation: pop .35s cubic-bezier(.2, .8, .2, 1); }
+
+/* ===== Flashcard lật mặt ===== */
+.fc { perspective: 800px; }
+.fc-front, .fc-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1), border-color .15s, background-color .15s;
+}
+.fc-back { transform: rotateY(180deg); }
+.fc-flipped .fc-front, .fc:focus-within .fc-front { transform: rotateY(180deg); }
+.fc-flipped .fc-back, .fc:focus-within .fc-back { transform: rotateY(0); }
+@media (hover: hover) {
+  .fc:hover .fc-front { transform: rotateY(180deg); }
+  .fc:hover .fc-back { transform: rotateY(0); }
+  .fc-actions { display: none; }          /* desktop: click thẻ = đánh dấu, không cần nút mặt sau */
+}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; scroll-behavior: auto !important; }
+  .fc-front, .fc-back { transition: none; }
+  .fc-flipped .fc-front, .fc:focus-within .fc-front, .fc:hover .fc-front { transform: none; opacity: 0; }
+  .fc-back { transform: none; opacity: 0; }
+  .fc-flipped .fc-back, .fc:focus-within .fc-back, .fc:hover .fc-back { opacity: 1; }
 }
