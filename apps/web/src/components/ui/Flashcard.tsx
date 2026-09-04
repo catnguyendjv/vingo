@@ -15,6 +15,8 @@ function hoverCapable(): boolean {
 
 export function Flashcard({ term, reading, meaning, known, current, size = "sm", editable, onToggleKnown, onRemove }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const revealed = flipped || focused;
   const lg = size === "lg";
   const face = cn(
     "col-start-1 row-start-1 flex flex-col justify-center rounded-md border text-left",
@@ -32,6 +34,8 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
       data-testid="flashcard" data-known={known ? "true" : "false"}
       className={cn("fc relative inline-grid", lg && "w-full", flipped && "fc-flipped")}
       onClick={handleCardClick}
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false); }}
     >
       <button
         type="button"
@@ -49,18 +53,24 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
         {reading && <span lang="ja" className={readingCls}>{reading}</span>}
       </button>
 
-      <div className={cn(face, "fc-back border-line bg-surface-2")} aria-hidden={!flipped}>
+      <div className={cn(face, "fc-back border-line bg-surface-2")} aria-hidden={!revealed}>
         {reading && <span lang="ja" className={readingCls}>{reading}</span>}
         <span className={cn("leading-snug text-ink", lg ? "text-sm" : "text-[13px]")}>{meaning ?? "—"}</span>
         <span className="fc-actions mt-1.5 flex gap-1.5">
           <button
             type="button"
+            tabIndex={revealed ? 0 : -1}
             onClick={(e) => { e.stopPropagation(); onToggleKnown(); setFlipped(false); }}
             className="rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] font-medium hover:border-muted"
           >
             {known ? "Bỏ đã thuộc" : "✓ Đã thuộc"}
           </button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); setFlipped(false); }} className="rounded-full px-2 py-0.5 text-[11px] text-muted">
+          <button
+            type="button"
+            tabIndex={revealed ? 0 : -1}
+            onClick={(e) => { e.stopPropagation(); setFlipped(false); }}
+            className="rounded-full px-2 py-0.5 text-[11px] text-muted"
+          >
             Đóng
           </button>
         </span>

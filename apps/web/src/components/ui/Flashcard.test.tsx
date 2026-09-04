@@ -66,4 +66,24 @@ describe("Flashcard", () => {
     expect(remove).toHaveBeenCalledTimes(1);
     expect(toggle).not.toHaveBeenCalled();
   });
+
+  it("mobile: nút mặt sau không focus được khi chưa lật", () => {
+    mockHover(false);
+    render(<Flashcard {...base} onToggleKnown={() => {}} />);
+    const backButton = screen.getByRole("button", { name: "✓ Đã thuộc", hidden: true });
+    expect(backButton.getAttribute("tabindex")).toBe("-1");
+    fireEvent.click(screen.getByRole("button", { name: "採用状況: đánh dấu đã thuộc" }));
+    expect(backButton.getAttribute("tabindex")).toBe("0");
+  });
+
+  it("focus vào mặt trước → mặt sau không còn aria-hidden", () => {
+    mockHover(true);
+    const { container } = render(<Flashcard {...base} onToggleKnown={() => {}} />);
+    const frontButton = screen.getByRole("button", { name: "採用状況: đánh dấu đã thuộc" });
+    const back = container.querySelector(".fc-back") as HTMLElement;
+    fireEvent.focus(frontButton);
+    expect(back.getAttribute("aria-hidden")).toBe("false");
+    fireEvent.blur(frontButton, { relatedTarget: null });
+    expect(back.getAttribute("aria-hidden")).toBe("true");
+  });
 });
