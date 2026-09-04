@@ -3,6 +3,8 @@ import { createServerSupabase } from "@/lib/supabase/server";
 import { getThumbUrl } from "@/lib/video";
 import type { LessonRow } from "@/lib/types";
 import { LessonCard } from "@/components/library/LessonCard";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { EmptyState } from "@/components/library/EmptyState";
 
 export default async function LibraryPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = "mine" } = await searchParams;
@@ -37,18 +39,29 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       progress: { done: doneByLesson.get(l.id) ?? 0, total: totalByLesson.get(l.id) ?? 0 },
     })),
   );
+  const current = tab === "community" ? "community" : "mine";
   return (
-    <main>
-      <div className="mb-4 flex gap-2 text-sm">
-        <a href="/?tab=mine" className={`rounded px-3 py-1 ${tab !== "community" ? "bg-black text-white" : "border"}`}>Của tôi</a>
-        <a href="/?tab=community" className={`rounded px-3 py-1 ${tab === "community" ? "bg-black text-white" : "border"}`}>Cộng đồng</a>
+    <main className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-[22px] font-bold tracking-[-0.02em]">Thư viện</h1>
+        <SegmentedControl
+          ariaLabel="Bộ lọc thư viện"
+          value={current}
+          items={[
+            { value: "mine", label: "Của tôi", href: "/?tab=mine" },
+            { value: "community", label: "Cộng đồng", href: "/?tab=community" },
+          ]}
+        />
       </div>
-      {withThumbs.length === 0 && <p className="text-gray-500">Chưa có bài học nào.</p>}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {withThumbs.map(({ lesson, thumb, progress }) => (
-          <LessonCard key={lesson.id} lesson={lesson} thumbUrl={thumb} progress={progress} />
-        ))}
-      </div>
+      {withThumbs.length === 0 ? (
+        <EmptyState tab={current} />
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {withThumbs.map(({ lesson, thumb, progress }) => (
+            <LessonCard key={lesson.id} lesson={lesson} thumbUrl={thumb} progress={progress} />
+          ))}
+        </div>
+      )}
     </main>
   );
 }
