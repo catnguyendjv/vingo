@@ -1,11 +1,22 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CueRow, LessonRow, VocabRow } from "@/lib/types";
 import { Html5PlayerAdapter, type PlayerAdapter } from "@/lib/player";
 import { findActiveCueIndex, nextUndoneIndex } from "@/lib/cues";
+import { percent } from "@/lib/format";
+import { badgeFor } from "@/lib/lesson-status";
+import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { Icon } from "@/components/ui/Icon";
+import { IconButton } from "@/components/ui/IconButton";
+import { Badge } from "@/components/ui/Badge";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { ProgressRing } from "@/components/ui/ProgressRing";
 import { CueList } from "./CueList";
 import { VocabPanel } from "./VocabPanel";
+import { StudyControls } from "./StudyControls";
+import { MobileDock } from "./MobileDock";
 
 export type StudyViewProps = {
   lesson: LessonRow; cues: CueRow[]; vocab: VocabRow[]; videoUrl: string | null;
@@ -109,33 +120,84 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
     }
   };
 
+  const [mobileTab, setMobileTab] = useState<"cues" | "vocab">("cues");
+  const nextIdx = nextUndoneIndex(localCues, doneIds);
+  const badge = badgeFor(lesson.status, { done: doneIds.size, total: localCues.length });
+
+  const controls = {
+    abActive: !!abRange, onToggleAb: toggleAb,
+    rate, onChangeRate: changeRate,
+    showTarget, onToggleTarget: () => setShowTarget((s) => !s),
+    onMarkUpToActive: markUpToActive, onContinue: continueStudy,
+    done: doneIds.size, total: localCues.length,
+    canEdit, editMode, onToggleEdit: () => setEditMode((e) => !e),
+    activeIdx, nextIdx,
+  };
+
   return (
-    <main className="grid gap-4 lg:grid-cols-[1fr_420px]">
-      <div>
-        <h1 className="mb-2 text-lg font-bold">{lesson.title}</h1>
-        {videoUrl
-          ? <video ref={videoRef} src={videoUrl} controls playsInline className="w-full rounded bg-black" />
-          : <div className="flex aspect-video items-center justify-center rounded bg-gray-100 text-sm text-gray-500">Video chưa sẵn sàng ({lesson.status})</div>}
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-          <button onClick={toggleAb} className={`rounded border px-2 py-1 ${abRange ? "bg-black text-white" : ""}`}>🔁 Lặp câu</button>
-          <label>Tốc độ
-            <select value={rate} onChange={(e) => changeRate(Number(e.target.value))} className="ml-1 rounded border p-1">
-              {[0.5, 0.75, 1, 1.25, 1.5].map((r) => <option key={r} value={r}>{r}x</option>)}
-            </select>
-          </label>
-          <button onClick={() => setShowTarget((s) => !s)} className="rounded border px-2 py-1">
-            {showTarget ? "Ẩn" : "Hiện"} bản dịch
-          </button>
-          <button onClick={markUpToActive} className="rounded border px-2 py-1">✓ Đã học tới câu đang phát</button>
-          <button onClick={continueStudy} className="rounded border px-2 py-1">▶ Tiếp tục</button>
-          <span className="text-xs text-gray-500">{doneIds.size}/{localCues.length} câu</span>
-          {canEdit && <button onClick={() => setEditMode((e) => !e)} className={`rounded border px-2 py-1 ${editMode ? "bg-black text-white" : ""}`}>✎ Sửa</button>}
+    <main className="pb-[84px] lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:pb-0">
+      {/* Khối trái: sticky trên mobile, tĩnh trên desktop */}
+      <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-page px-4 pb-2 lg:static lg:mx-0 lg:gap-3 lg:px-0 lg:pb-0">
+        <div className="flex h-[52px] items-center gap-1 lg:hidden">
+          <Link href="/" aria-label="Về thư viện" className="grid size-[38px] shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2">
+            <Icon name="chevron-left" className="size-5" />
+          </Link>
+          <h1 lang="ja" className="min-w-0 flex-1 truncate font-jp text-sm font-semibold">{lesson.title}</h1>
+          {canEdit && (
+            <IconButton label="Sửa bài" aria-pressed={editMode} onClick={() => setEditMode((e) => !e)} className={cn(editMode && "bg-accent-soft text-accent")}>
+              <Icon name="pencil" className="size-[18px]" />
+            </IconButton>
+          )}
+        </div>
+        <h1 lang="ja" className="hidden font-jp text-xl font-semibold leading-snug lg:block">{lesson.title}</h1>
+
+        <div className="overflow-hidden rounded-md bg-video lg:rounded-lg">
+          {videoUrl ? (
+            <video ref={videoRef} src={videoUrl} controls playsInline className="aspect-video w-full" />
+          ) : (
+            <div className="flex aspect-video flex-col items-center justify-center gap-2 text-sm text-[#A89684]">
+              <Icon name="video-off" className="size-9" />
+              <span>Video chưa sẵn sàng</span>
+              {badge && <Badge kind={badge.kind}>{badge.label}</Badge>}
+            </div>
+          )}
+        </div>
+
+        <StudyControls className="hidden lg:flex" {...controls} />
+
+        <div className="flex items-center justify-between gap-2 lg:hidden">
+          <SegmentedControl
+            ariaLabel="Nội dung" tight value={mobileTab} onChange={setMobileTab}
+            items={[
+              { value: "cues", label: <>Câu · <span className="tabular-nums">{doneIds.size}/{localCues.length}</span></> },
+              { value: "vocab", label: <>Từ vựng · <span className="tabular-nums">{localVocab.length}</span></> },
+            ]}
+          />
+          <ProgressRing value={percent(doneIds.size, localCues.length)} size={32} label />
         </div>
       </div>
-      <div>
-        <CueList cues={localCues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue} vocabByCue={vocabByCue} doneIds={doneIds} onToggleDone={toggleDone} editMode={editMode} onSaveCue={saveCueText} />
-        <VocabPanel vocab={localVocab} knownTerms={knownTerms} onToggleKnown={toggleKnown} activeCueId={activeIdx >= 0 ? localCues[activeIdx].id : null} activeIdx={activeIdx} editMode={editMode} onAdd={(term, reading, meaning) => activeIdx >= 0 && addVocab(localCues[activeIdx].id, term, reading, meaning)} onRemove={removeVocab} />
+
+      {/* Khối phải */}
+      <div className="flex flex-col gap-4 pt-2 lg:pt-0">
+        <div className={cn(mobileTab !== "cues" && "hidden lg:block")}>
+          <CueList
+            cues={localCues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue}
+            vocabByCue={vocabByCue} doneIds={doneIds} onToggleDone={toggleDone}
+            editMode={editMode} onSaveCue={saveCueText}
+          />
+        </div>
+        <div className={cn(mobileTab !== "vocab" && "hidden lg:block")}>
+          <VocabPanel
+            vocab={localVocab} knownTerms={knownTerms} onToggleKnown={toggleKnown}
+            activeCueId={activeIdx >= 0 ? localCues[activeIdx].id : null} activeIdx={activeIdx}
+            editMode={editMode}
+            onAdd={(term, reading, meaning) => activeIdx >= 0 && addVocab(localCues[activeIdx].id, term, reading, meaning)}
+            onRemove={removeVocab}
+          />
+        </div>
       </div>
+
+      <MobileDock {...controls} />
     </main>
   );
 }
