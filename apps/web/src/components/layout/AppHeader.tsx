@@ -15,6 +15,7 @@ export function AppHeader() {
         <nav className="flex items-center gap-1.5">
           <Link
             href="/dictionary"
+            aria-label="Từ điển"
             className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 font-medium transition-colors hover:bg-surface-2"
           >
             <Icon name="book" className="size-[18px]" />
@@ -26,6 +27,7 @@ export function AppHeader() {
           <form action="/auth/signout" method="post">
             <button
               type="submit"
+              aria-label="Đăng xuất"
               className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-muted transition-colors hover:bg-surface-2 hover:text-ink"
             >
               <Icon name="log-out" className="size-[18px]" />

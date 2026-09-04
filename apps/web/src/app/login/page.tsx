@@ -26,8 +26,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           {error && <p className="mt-2 text-sm font-medium text-danger">Sai email hoặc mật khẩu.</p>}
         </div>
         <form action={login} className="flex flex-col gap-3">
-          <Input name="email" type="email" required placeholder="Email" autoComplete="email" icon="mail" />
-          <Input name="password" type="password" required placeholder="Mật khẩu" autoComplete="current-password" icon="lock" />
+          <Input name="email" type="email" required placeholder="Email" autoComplete="email" icon="mail" aria-label="Email" />
+          <Input name="password" type="password" required placeholder="Mật khẩu" autoComplete="current-password" icon="lock" aria-label="Mật khẩu" />
           <Button type="submit" variant="primary" className="mt-1 h-[46px] w-full justify-center">Đăng nhập</Button>
         </form>
         <p className="text-center text-xs text-muted">
