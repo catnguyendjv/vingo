@@ -137,14 +137,14 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   return (
     <main className="pb-[84px] lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:pb-0">
       {/* Khối trái: sticky trên mobile, tĩnh trên desktop */}
-      <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-page px-4 pb-2 lg:static lg:mx-0 lg:gap-3 lg:px-0 lg:pb-0">
+      <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-page px-4 pb-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:gap-3 lg:px-0 lg:pb-0">
         <div className="flex h-[52px] items-center gap-1 lg:hidden">
           <Link href="/" aria-label="Về thư viện" className="grid size-[38px] shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2">
             <Icon name="chevron-left" className="size-5" />
           </Link>
           <h1 lang="ja" className="min-w-0 flex-1 truncate font-jp text-sm font-semibold">{lesson.title}</h1>
           {canEdit && (
-            <IconButton label="Sửa bài" aria-pressed={editMode} onClick={() => setEditMode((e) => !e)} className={cn(editMode && "bg-accent-soft text-accent")}>
+            <IconButton label="Sửa bài" pressed={editMode} onClick={() => setEditMode((e) => !e)}>
               <Icon name="pencil" className="size-[18px]" />
             </IconButton>
           )}

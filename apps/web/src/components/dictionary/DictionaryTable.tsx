@@ -50,7 +50,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
     const csv = ["term,reading,meaning,occurrences,known",
       ...rows.map((e) => [esc(e.term), esc(e.reading), esc(e.meaning), e.occurrences, known.has(keyOf(e))].join(","))].join("\n");
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" }));
+    a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: "text/csv" }));
     a.download = "vingo-dictionary.csv";
     a.click();
   };
@@ -62,7 +62,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
     <div className="flex flex-col gap-3">
       {/* Toolbar */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center">
-        <Input icon="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm 単語 / cách đọc / nghĩa" className="w-full md:max-w-[380px]" />
+        <Input icon="search" aria-label="Tìm từ" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm 単語 / cách đọc / nghĩa" className="w-full md:max-w-[380px]" />
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl ariaLabel="Lọc theo trạng thái" tight value={filter} onChange={setFilter} items={FILTERS} />
           <span className="md:hidden">{countPill}</span>

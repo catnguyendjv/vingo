@@ -34,6 +34,7 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
   return (
     <div
       data-testid="flashcard" data-known={known ? "true" : "false"}
+      role="group" aria-label={term}
       className={cn("fc relative inline-grid", lg && "w-full", flipped && "fc-flipped")}
       onClick={handleCardClick}
       onFocus={() => setFocused(true)}

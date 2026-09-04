@@ -9,7 +9,7 @@ export function badgeFor(status: LessonRow["status"], p: Progress): { kind: Badg
   if (status === "processing") return { kind: "processing", label: "đang xử lý video…" };
   if (status === "error") return { kind: "error", label: "lỗi xử lý video" };
   if (p.total > 0 && p.done >= p.total) return { kind: "done", label: "Xong" };
-  if (p.done > 0) return { kind: "learning", label: "Tiếp tục" };
+  if (p.total > 0 && p.done > 0) return { kind: "learning", label: "Tiếp tục" };
   return null;
 }
 

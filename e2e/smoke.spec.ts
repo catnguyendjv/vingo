@@ -83,6 +83,7 @@ test.describe("mobile 390", () => {
     await card.locator(".fc-front").tap();
     await card.getByRole("button", { name: !wasKnown ? "Bỏ đã thuộc" : "✓ Đã thuộc" }).tap();
     await expect(card).toHaveAttribute("data-known", String(wasKnown));
+    await expect(card).not.toHaveClass(/fc-flipped/);
 
     // từ điển dạng thẻ
     await page.goto("/dictionary");

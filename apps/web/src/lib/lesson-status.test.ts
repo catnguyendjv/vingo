@@ -11,6 +11,7 @@ describe("badgeFor", () => {
   it("ready + đang học → Tiếp tục", () => expect(badgeFor("ready", { done: 37, total: 576 })).toEqual({ kind: "learning", label: "Tiếp tục" }));
   it("ready + chưa học → không badge", () => expect(badgeFor("ready", { done: 0, total: 140 })).toBeNull());
   it("ready + không có câu → không badge", () => expect(badgeFor("ready", { done: 0, total: 0 })).toBeNull());
+  it("ready + done nhưng total 0 → không badge", () => expect(badgeFor("ready", { done: 34, total: 0 })).toBeNull());
 });
 
 describe("progressLabel", () => {
