@@ -134,7 +134,7 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
       </div>
       <div>
         <CueList cues={localCues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue} vocabByCue={vocabByCue} doneIds={doneIds} onToggleDone={toggleDone} editMode={editMode} onSaveCue={saveCueText} />
-        <VocabPanel vocab={localVocab} knownTerms={knownTerms} onToggleKnown={toggleKnown} activeCueId={activeIdx >= 0 ? localCues[activeIdx].id : null} editMode={editMode} onAdd={(term, reading, meaning) => activeIdx >= 0 && addVocab(localCues[activeIdx].id, term, reading, meaning)} onRemove={removeVocab} />
+        <VocabPanel vocab={localVocab} knownTerms={knownTerms} onToggleKnown={toggleKnown} activeCueId={activeIdx >= 0 ? localCues[activeIdx].id : null} activeIdx={activeIdx} editMode={editMode} onAdd={(term, reading, meaning) => activeIdx >= 0 && addVocab(localCues[activeIdx].id, term, reading, meaning)} onRemove={removeVocab} />
       </div>
     </main>
   );
