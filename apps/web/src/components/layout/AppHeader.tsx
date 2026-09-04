@@ -23,6 +23,14 @@ export function AppHeader() {
               <span lang="ja" className="font-jp text-muted">単語帳</span> Từ điển
             </span>
           </Link>
+          <Link
+            href="/settings"
+            aria-label="Cài đặt"
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 font-medium transition-colors hover:bg-surface-2"
+          >
+            <Icon name="settings" className="size-[18px]" />
+            <span className="hidden sm:inline">Cài đặt</span>
+          </Link>
           <ThemeToggle />
           <form action="/auth/signout" method="post">
             <button

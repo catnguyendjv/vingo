@@ -10,6 +10,7 @@
     "e2e": "pnpm --filter @vingo/e2e e2e"
   },
   "packageManager": "pnpm@10.29.2",
+  "pnpm": { "onlyBuiltDependencies": ["esbuild", "ffmpeg-static"] },
   "dependencies": {
     "@supabase/supabase-js": "^2.114.0",
     "uuid": "^14.0.2"
