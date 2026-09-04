@@ -9,7 +9,10 @@ export default async function DictionaryPage() {
   const { data } = await supabase.rpc("my_dictionary");
   return (
     <main>
-      <h1 className="mb-4 text-xl font-bold">単語帳 — Từ điển</h1>
+      <h1 className="mb-4 flex items-baseline gap-2">
+        <span lang="ja" className="font-jp text-base font-medium text-muted">単語帳</span>
+        <span className="text-[22px] font-bold tracking-[-0.02em]">Từ điển</span>
+      </h1>
       <DictionaryTable entries={(data ?? []) as DictEntry[]} userId={user.id} />
     </main>
   );
