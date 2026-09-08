@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Be_Vietnam_Pro, Zen_Kaku_Gothic_New } from "next/font/google";
 import { cookies } from "next/headers";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
+import { ServiceWorkerRegistrar } from "@/components/layout/ServiceWorkerRegistrar";
 import "./globals.css";
 
 const beVietnam = Be_Vietnam_Pro({
@@ -37,7 +38,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <html lang="vi" data-theme={theme ?? undefined} className={`${beVietnam.variable} ${zenKaku.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <ServiceWorkerRegistrar />
+      </body>
     </html>
   );
 }
