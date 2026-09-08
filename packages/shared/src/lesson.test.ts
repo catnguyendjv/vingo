@@ -37,4 +37,17 @@ describe("lessonJsonSchema", () => {
     const yt = { ...valid, source_type: "youtube", video_provider: "youtube", video_ref: "dQw4w9WgXcQ", vocab: [] };
     expect(lessonJsonSchema.parse(yt).video_provider).toBe("youtube");
   });
+  it("local: không cần video file, nhận video_size_bytes", () => {
+    const local = { ...valid, source_type: "zoom", video_provider: "local", video_ref: "meeting.mp4", duration_sec: 2617, video_size_bytes: 734003200, vocab: [] };
+    const parsed = lessonJsonSchema.parse(local);
+    expect(parsed.video_provider).toBe("local");
+    expect(parsed.video_size_bytes).toBe(734003200);
+  });
+  it("local không có video_ref vẫn hợp lệ", () => {
+    const { video_ref: _, ...rest } = { ...valid, video_provider: "local" as const, vocab: [] };
+    expect(lessonJsonSchema.parse(rest).video_ref).toBeUndefined();
+  });
+  it("video_size_bytes phải là số nguyên dương", () => {
+    expect(() => lessonJsonSchema.parse({ ...valid, video_size_bytes: -1 })).toThrow();
+  });
 });

@@ -90,6 +90,16 @@ describe("createLesson", () => {
     expect(st.status).toBe("ready");
   });
 
+  it("local → status ready ngay, lưu video_size_bytes", async () => {
+    const ctx = ctxFor(userA);
+    const lesson = makeLesson({ video_provider: "local", video_ref: "meeting.mp4", video_size_bytes: 1234567 });
+    const res = await createLesson(ctx, lesson);
+    expect(res.video_next_step).toContain("local");
+    expect((await getIngestStatus(ctx, lesson.id)).status).toBe("ready");
+    const { data } = await admin.from("lessons").select("video_size_bytes").eq("id", lesson.id).single();
+    expect(data!.video_size_bytes).toBe(1234567);
+  });
+
   it("RLS: user B không đọc được bài private của user A qua core", async () => {
     const ctxA = ctxFor(userA);
     const ctxB = ctxFor(userB);

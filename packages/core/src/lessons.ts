@@ -37,6 +37,8 @@ export async function listLessons(ctx: CoreContext): Promise<LessonSummary[]> {
 
 function videoNextStep(lesson: LessonJson): string {
   if (lesson.video_provider === "youtube") return "youtube — không cần video, bài đã sẵn sàng.";
+  if (lesson.video_provider === "local")
+    return "local — không upload; bài đã sẵn sàng. Người học mở bài trên web, bấm 'Chọn video trên máy' và trỏ tới file gốc.";
   return [
     "Cần đưa video để bài sang ready:",
     "• Đường A (ưu tiên): có direct-download link → ingest_video_from_url.",
@@ -119,9 +121,10 @@ export async function createLesson(ctx: CoreContext, input: unknown): Promise<Cr
   return { lesson_id: lesson.id, already_exists: false, video_next_step: videoNextStep(lesson) };
 }
 
-// Cột lessons suy từ lesson JSON. youtube → ready ngay (web derive thumbnail); còn lại → draft.
+// Cột lessons suy từ lesson JSON. youtube/local → ready ngay (youtube: web derive thumbnail;
+// local: người học tự chọn file trên web); còn lại → draft.
 function lessonRow(lesson: LessonJson) {
-  const isYoutube = lesson.video_provider === "youtube";
+  const readyNow = lesson.video_provider === "youtube" || lesson.video_provider === "local";
   return {
     title: lesson.title,
     lesson_date: lesson.lesson_date ?? null,
@@ -132,7 +135,8 @@ function lessonRow(lesson: LessonJson) {
     video_provider: lesson.video_provider ?? null,
     video_ref: lesson.video_ref ?? null,
     duration_sec: lesson.duration_sec ?? null,
-    status: isYoutube ? "ready" : "draft",
+    video_size_bytes: lesson.video_size_bytes ?? null,
+    status: readyNow ? "ready" : "draft",
     ingest_error: null,
   };
 }

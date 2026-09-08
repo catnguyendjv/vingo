@@ -55,8 +55,9 @@ export async function cleanupUser(userId: string): Promise<void> {
 interface LessonOverrides {
   title?: string;
   source_type?: "zoom" | "youtube" | "upload";
-  video_provider?: "storage" | "youtube";
+  video_provider?: "storage" | "youtube" | "local";
   video_ref?: string;
+  video_size_bytes?: number;
   cueText?: string;
   vocabTerm?: string;
 }
@@ -72,6 +73,7 @@ export function makeLesson(o: LessonOverrides = {}) {
     target_lang: "vi",
     video_provider: o.video_provider,
     video_ref: o.video_ref,
+    video_size_bytes: o.video_size_bytes,
     cues: [
       {
         id: cueId,

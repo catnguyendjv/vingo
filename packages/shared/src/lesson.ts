@@ -28,9 +28,10 @@ export const lessonJsonSchema = z.object({
   source_ref: z.string().optional(),
   source_lang: z.string().min(2),
   target_lang: z.string().min(2),
-  video_provider: z.enum(["storage", "youtube"]).optional(),
+  video_provider: z.enum(["storage", "youtube", "local"]).optional(),
   video_ref: z.string().optional(),
   duration_sec: z.number().int().positive().optional(),
+  video_size_bytes: z.number().int().positive().optional(),
   cues: z.array(cueInputSchema).min(1),
   vocab: z.array(vocabInputSchema),
 }).superRefine((l, ctx) => {
