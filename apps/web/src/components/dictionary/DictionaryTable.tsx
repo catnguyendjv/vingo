@@ -97,12 +97,12 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
         <Input icon="search" aria-label="Tìm từ" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm 単語 / cách đọc / nghĩa" className="w-full md:max-w-[380px]" />
         <div className="flex flex-wrap items-center gap-2">
           <SegmentedControl ariaLabel="Lọc theo trạng thái" tight value={filter} onChange={setFilter} items={FILTERS} />
-          <span className="md:hidden">{countPill}</span>
-          <IconButton label="Tải CSV" onClick={exportCsv} className="md:hidden"><Icon name="download" className="size-[18px]" /></IconButton>
-          <span className="hidden md:inline-flex">
-            <Button onClick={exportCsv}><Icon name="download" className="size-[17px]" />CSV</Button>
+          {/* Số từ + nút CSV cùng hàng với bộ lọc, canh phải; màn hẹp chỉ icon (spec P2 §6 M4) */}
+          <span className="ml-auto inline-flex items-center gap-2">
+            {countPill}
+            <span className="md:hidden"><IconButton label="Tải CSV" onClick={exportCsv}><Icon name="download" className="size-[18px]" /></IconButton></span>
+            <span className="hidden md:inline-flex"><Button onClick={exportCsv}><Icon name="download" className="size-[17px]" />CSV</Button></span>
           </span>
-          <span className="ml-auto hidden md:inline">{countPill}</span>
         </div>
       </div>
 

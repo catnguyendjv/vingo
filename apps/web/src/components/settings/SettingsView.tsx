@@ -131,8 +131,9 @@ export function SettingsView({
         <div className="mt-5 flex flex-col gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">2 lệnh trong Claude Code</p>
           {[cmdAdd, cmdLogin].map((cmd) => (
-            <div key={cmd} className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
-              <code className="flex-1 overflow-x-auto whitespace-nowrap text-[13px]">{cmd}</code>
+            <div key={cmd} className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 py-2 pl-3 pr-2">
+              {/* <pre> thay <code>: overflow-x-auto cần block; min-w-0 để flex cho phép co (spec P2 §6 M3) */}
+              <pre className="min-w-0 flex-1 overflow-x-auto whitespace-pre font-mono text-[13px] leading-relaxed [scrollbar-width:thin]">{cmd}</pre>
               <CopyButton value={cmd} />
             </div>
           ))}
