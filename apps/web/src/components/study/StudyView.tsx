@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CueRow, EnrollItem, LessonRow, VocabRow } from "@/lib/types";
 import { createReviewApi } from "@/lib/review-api";
-import { Html5PlayerAdapter, type PlayerAdapter } from "@/lib/player";
+import type { PlayerAdapter, PlayerState } from "@/lib/player";
 import { checkMatch } from "@/lib/local-video";
 import { findActiveCueIndex, nextUndoneIndex } from "@/lib/cues";
 import { percent } from "@/lib/format";
@@ -12,14 +12,13 @@ import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { Icon } from "@/components/ui/Icon";
 import { IconButton } from "@/components/ui/IconButton";
-import { Badge } from "@/components/ui/Badge";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { CueList } from "./CueList";
 import { VocabPanel } from "./VocabPanel";
 import { StudyControls } from "./StudyControls";
 import { MobileDock } from "./MobileDock";
-import { LocalVideoSource } from "./LocalVideoSource";
+import { VideoFrame } from "./VideoFrame";
 
 export type StudyViewProps = {
   lesson: LessonRow; cues: CueRow[]; vocab: VocabRow[]; videoUrl: string | null;
@@ -27,8 +26,11 @@ export type StudyViewProps = {
 };
 
 export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCueIds, initialKnownTerms, initialReviewTerms, canEdit, userId }: StudyViewProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<PlayerAdapter | null>(null);
+  // YouTube không cho seek trước cử chỉ đầu (spec P2 §3.2): giữ seek ban đầu, áp khi state PLAYING lần đầu.
+  const pendingSeekRef = useRef<number | null>(null);
+  // Trạng thái phát: lộ ra data-player-state trên <main>; Task 12 (Wake Lock) dùng tiếp.
+  const [playerState, setPlayerState] = useState<PlayerState>("paused");
   // Video local (spec P2 §2.6): object URL của file người học chọn; revoke khi đổi file/unmount (effect bên dưới).
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const [localWarn, setLocalWarn] = useState<string[]>([]);
@@ -40,7 +42,6 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   };
   const clearLocal = () => { localFileRef.current = null; setLocalWarn([]); setLocalUrl(null); };
   useEffect(() => () => { if (localUrl) URL.revokeObjectURL(localUrl); }, [localUrl]);
-  const src = videoUrl ?? localUrl;
   const [activeIdx, setActiveIdx] = useState(-1);
   const [showTarget, setShowTarget] = useState(true);
   const [rate, setRate] = useState(1);
@@ -62,6 +63,9 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   };
   const [editMode, setEditMode] = useState(false);
   const [localCues, setLocalCues] = useState(cues);
+  // Ref cho onTime của player: sửa câu (edit mode) không phải tạo lại adapter.
+  const localCuesRef = useRef(localCues);
+  localCuesRef.current = localCues;
   const [localVocab, setLocalVocab] = useState(vocab);
 
   const saveCueText = async (cueId: string, patch: { text_source?: string; text_target?: string }) => {
@@ -78,26 +82,38 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
     await supabase.from("vocab_items").delete().eq("id", id);
   };
 
-  useEffect(() => {
-    if (!videoRef.current) return;
-    const player = new Html5PlayerAdapter(videoRef.current);
+  // Seek ban đầu từ hash `#cue=<idx>` / `#cueid=<uuid>`; chỉ tính một lần cho cả phiên (Task 12 sẽ thêm câu chưa học đầu).
+  const initialSeekMs = (): number | null => {
+    if (hashSeekDone.current) return null;
+    hashSeekDone.current = true;
+    const cs = localCuesRef.current;
+    const mIdx = location.hash.match(/^#cue=(\d+)$/);
+    const mId = location.hash.match(/^#cueid=([0-9a-f-]{36})$/);
+    const cue = mIdx ? cs.find((c) => c.idx === Number(mIdx[1]))
+             : mId ? cs.find((c) => c.id === mId[1]) : undefined;
+    return cue ? cue.start_ms : null;
+  };
+  // VideoFrame gọi mỗi khi tạo adapter mới (đổi nguồn: bài local chọn file); adapter cũ đã destroy → listener tự gỡ.
+  const onPlayerReady = (player: PlayerAdapter) => {
     playerRef.current = player;
-    const off = player.onTime((ms) => {
-      setActiveIdx(findActiveCueIndex(localCues, ms));
+    player.onTime((ms) => {
+      setActiveIdx(findActiveCueIndex(localCuesRef.current, ms));
       const ab = abRef.current;
       if (ab && ms >= ab.end) player.seekTo(ab.start);
     });
-    if (!hashSeekDone.current) {
-      hashSeekDone.current = true;
-      const mIdx = location.hash.match(/^#cue=(\d+)$/);
-      const mId = location.hash.match(/^#cueid=([0-9a-f-]{36})$/);
-      const cue = mIdx ? localCues.find((c) => c.idx === Number(mIdx[1]))
-               : mId ? localCues.find((c) => c.id === mId[1]) : undefined;
-      if (cue) player.seekTo(cue.start_ms);
+    player.onStateChange((s) => {
+      setPlayerState(s);
+      if (s === "playing" && pendingSeekRef.current != null) {
+        player.seekTo(pendingSeekRef.current);
+        pendingSeekRef.current = null;
+      }
+    });
+    const initial = initialSeekMs();
+    if (initial != null) {
+      if (lesson.video_provider === "youtube") pendingSeekRef.current = initial;
+      else player.seekTo(initial);
     }
-    return () => { off(); player.destroy(); };
-    // src: <video> chỉ mount sau khi có nguồn (bài local chọn file) → tạo lại adapter.
-  }, [localCues, src]);
+  };
 
   const seekToCue = (i: number) => { playerRef.current?.seekTo(localCues[i].start_ms); playerRef.current?.play(); };
   const toggleAb = () => {
@@ -194,7 +210,7 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   };
 
   return (
-    <main className="pb-[84px] lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:pb-0">
+    <main data-player-state={playerState} className="pb-[84px] lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:pb-0">
       {/* Khối trái: sticky trên mobile, tĩnh trên desktop */}
       <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-page px-4 pb-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:gap-3 lg:px-0 lg:pb-0">
         <div className="flex h-[52px] items-center gap-1 lg:hidden">
@@ -210,25 +226,14 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
         </div>
         <h1 lang="ja" className="hidden font-jp text-xl font-semibold leading-snug lg:block">{lesson.title}</h1>
 
-        <div className="overflow-hidden rounded-md bg-video lg:rounded-lg">
-          {src ? (
-            <video
-              ref={videoRef} src={src} controls playsInline className="aspect-video w-full"
-              onLoadedMetadata={(e) => {
-                if (!localFileRef.current) return;
-                setLocalWarn(checkMatch(localFileRef.current, e.currentTarget.duration, lesson).reasons);
-              }}
-            />
-          ) : lesson.video_provider === "local" ? (
-            <LocalVideoSource lesson={lesson} onFile={pickLocal} />
-          ) : (
-            <div className="flex aspect-video flex-col items-center justify-center gap-2 text-sm text-[#A89684]">
-              <Icon name="video-off" className="size-9" />
-              <span>Video chưa sẵn sàng</span>
-              {badge && <Badge kind={badge.kind}>{badge.label}</Badge>}
-            </div>
-          )}
-        </div>
+        <VideoFrame
+          lesson={lesson} videoUrl={videoUrl} localUrl={localUrl} mode="full" badge={badge}
+          onReady={onPlayerReady} onLocalFile={pickLocal}
+          onLoadedMetadata={(durationSec) => {
+            if (!localFileRef.current) return;
+            setLocalWarn(checkMatch(localFileRef.current, durationSec, lesson).reasons);
+          }}
+        />
         {localWarn.length > 0 && (
           <div role="status" className="flex items-center justify-between gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning">
             <span>File có thể không đúng ({localWarn.join(", ")}).</span>
