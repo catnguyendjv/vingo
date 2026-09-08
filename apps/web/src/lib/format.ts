@@ -16,3 +16,18 @@ export function percent(done: number, total: number): number {
   if (total <= 0) return 0;
   return Math.min(100, Math.round((done / total) * 100));
 }
+
+/** Khoảng cách tới hạn ôn (ms) → nhãn ngắn tiếng Việt cho nút chấm SRS. */
+export function formatInterval(ms: number): string {
+  const min = ms / 60_000;
+  if (!Number.isFinite(min) || min < 1) return "<1 phút";
+  if (min < 60) return `${Math.round(min)} phút`;
+  const h = min / 60;
+  if (h < 24) return `${Math.round(h)} giờ`;
+  const d = h / 24;
+  if (d < 30) return `${Math.round(d)} ngày`;
+  if (d < 365) return `${Math.round(d / 30)} tháng`;
+  const y = d / 365;
+  const s = y >= 10 ? String(Math.round(y)) : String(Math.round(y * 10) / 10).replace(".", ",");
+  return `${s} năm`;
+}
