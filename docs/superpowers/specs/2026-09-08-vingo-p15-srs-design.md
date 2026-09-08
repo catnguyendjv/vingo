@@ -76,11 +76,12 @@ alter table review_cards add column source_cue_id uuid references cues(id) on de
 - Xoá **một** hàng `review_logs` mới nhất (theo `reviewed_at desc, id desc`) của card; nếu
   không có → raise. Cập nhật card về `p_card` (cùng danh sách cột như 2.4). Trả card.
 
-### 2.6 `review_stats() returns table(due int, new_available int, new_last_24h int)`
+### 2.6 `review_stats() returns table(due int, new_available int, new_last_24h int, next_due_at timestamptz)`
 - `due`: card của user, `suspended = false`, `state <> 'New'`, `due_at <= now()`.
 - `new_available`: `suspended = false`, `state = 'New'`.
 - `new_last_24h`: `count(review_logs)` của user với `reviewed_at > now() - interval '24 hours'`
-  và `(log->>'state')::int = 0` (ReviewLog.state là state **trước** khi review; 0 = New).
+  và `log->>'state' = '0'` (ReviewLog.state là state **trước** khi review; 0 = New).
+- `next_due_at`: `min(due_at)` của card active chưa tới hạn (null nếu không có) — cho màn "Xong phiên".
 - Header dùng badge = `due + least(new_available, greatest(0, 20 - new_last_24h))`.
 
 ### 2.7 `review_queue() returns table(…)`
@@ -151,8 +152,9 @@ Module thuần (không React), có `srs.test.ts`.
   `stats`, `userId`.
 - **`ReviewSession`** giữ toàn bộ state: hàng đợi, thẻ hiện tại, `revealed`, snapshot Undo
   `{cardId, prevPatch}`, `reviewedCount`, `pending` (đang gọi RPC). Con chỉ nhận props:
-  - `ReviewProgress` — thanh đầu: "12 / 27", số due còn, số New còn, nút Undo (`review-undo`, disabled
-    khi không có snapshot hoặc đang pending).
+  - `ReviewProgress` — thanh đầu: "N đã chấm · M còn lại" (N = số lượt chấm, M = thẻ còn trong hàng
+    đợi; thẻ requeue được tính lại nên không dùng dạng "x / tổng"), số due còn, số New còn, nút Undo
+    (`review-undo`, disabled khi không có snapshot hoặc đang pending).
   - `ReviewCard` — thẻ lật (`review-card`, `data-revealed`). Không dùng lại `ui/Flashcard` (API gắn
     với known/hover), nhưng dùng cùng class `.fc/.fc-front/.fc-back` và token. Mặt trước: chip
     trạng thái (New/Learning/Review/Relearning → "Mới/Đang học/Ôn/Học lại"), term lớn `lang="ja"
