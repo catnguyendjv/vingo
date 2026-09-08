@@ -18,6 +18,12 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     : query.eq("owner_id", user.id);
   const { data: lessons } = await query;
   const lessonIds = (lessons ?? []).map((l: LessonRow) => l.id);
+  // Tên người chia sẻ cho tab Cộng đồng (spec P2 §4.2): 1 query profiles theo owner_id (profiles_select mở cho authenticated).
+  const ownerIds = tab === "community" ? [...new Set((lessons ?? []).map((l: LessonRow) => l.owner_id))] : [];
+  const { data: profiles } = ownerIds.length
+    ? await supabase.from("profiles").select("id, display_name").in("id", ownerIds)
+    : { data: [] as { id: string; display_name: string | null }[] };
+  const nameOf = new Map((profiles ?? []).map((p) => [p.id, p.display_name]));
 
   const [{ data: doneRows }, { data: cueRows }] = await Promise.all([
     lessonIds.length
@@ -58,7 +64,11 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {withThumbs.map(({ lesson, thumb, progress }) => (
-            <LessonCard key={lesson.id} lesson={lesson} thumbUrl={thumb} progress={progress} />
+            <LessonCard
+              key={lesson.id} lesson={lesson} thumbUrl={thumb} progress={progress}
+              ownerName={tab === "community" ? nameOf.get(lesson.owner_id) ?? null : null}
+              isMine={lesson.owner_id === user.id}
+            />
           ))}
         </div>
       )}

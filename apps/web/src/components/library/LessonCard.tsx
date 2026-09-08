@@ -8,7 +8,11 @@ import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Icon } from "@/components/ui/Icon";
 import { cardClass } from "@/components/ui/Card";
 
-export function LessonCard({ lesson, thumbUrl, progress }: { lesson: LessonRow; thumbUrl: string | null; progress: Progress }) {
+// `ownerName`: chỉ truyền ở tab Cộng đồng (spec P2 §4.2) → bài của mình badge "Của bạn", bài người khác dòng "bởi …";
+// tab Của tôi (ownerName undefined/null) → bài đã share badge "Cộng đồng".
+export function LessonCard({ lesson, thumbUrl, progress, ownerName, isMine }: {
+  lesson: LessonRow; thumbUrl: string | null; progress: Progress; ownerName?: string | null; isMine: boolean;
+}) {
   const pct = percent(progress.done, progress.total);
   const badge = badgeFor(lesson.status, progress);
   const duration = formatDuration(lesson.duration_sec);
@@ -38,10 +42,18 @@ export function LessonCard({ lesson, thumbUrl, progress }: { lesson: LessonRow; 
       </div>
       <div className="flex flex-col gap-2 p-4">
         <p lang="ja" className="line-clamp-2 font-jp text-[15px] font-semibold leading-snug">{lesson.title}</p>
-        {lesson.lesson_date && (
-          <p className="flex items-center gap-1.5 text-xs text-muted">
-            <Icon name="calendar" className="size-3.5" />{lesson.lesson_date}
-          </p>
+        {(lesson.lesson_date || (lesson.visibility === "community" && isMine) || (ownerName && !isMine)) && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {lesson.lesson_date && (
+              <p className="flex items-center gap-1.5 text-xs text-muted">
+                <Icon name="calendar" className="size-3.5" />{lesson.lesson_date}
+              </p>
+            )}
+            {lesson.visibility === "community" && isMine && (
+              <Badge kind="draft"><Icon name="share" className="size-3" />{ownerName != null ? "Của bạn" : "Cộng đồng"}</Badge>
+            )}
+            {ownerName && !isMine && <p className="text-xs text-muted">bởi {ownerName}</p>}
+          </div>
         )}
         <div className="mt-1 flex items-center gap-3">
           <ProgressRing value={pct} />

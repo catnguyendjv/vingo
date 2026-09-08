@@ -19,6 +19,7 @@ import { VocabPanel } from "./VocabPanel";
 import { StudyControls } from "./StudyControls";
 import { MobileDock } from "./MobileDock";
 import { VideoFrame } from "./VideoFrame";
+import { ShareButton } from "./ShareButton";
 
 export type StudyViewProps = {
   lesson: LessonRow; cues: CueRow[]; vocab: VocabRow[]; videoUrl: string | null;
@@ -67,6 +68,16 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   const localCuesRef = useRef(localCues);
   localCuesRef.current = localCues;
   const [localVocab, setLocalVocab] = useState(vocab);
+
+  // Share community (spec P2 §4.2): optimistic + rollback + toast; RLS chỉ cho owner UPDATE.
+  const [visibility, setVisibility] = useState(lesson.visibility);
+  const changeVisibility = async (v: LessonRow["visibility"]) => {
+    const prev = visibility; setVisibility(v);
+    const { error } = await supabase.from("lessons").update({ visibility: v }).eq("id", lesson.id);
+    if (error) { setVisibility(prev); notify(`Lỗi: ${error.message}`); }
+    else notify(v === "community" ? "Đã chia sẻ lên cộng đồng" : "Đã ngừng chia sẻ");
+  };
+  const shareButton = canEdit && <ShareButton lesson={lesson} visibility={visibility} onChange={changeVisibility} />;
 
   const saveCueText = async (cueId: string, patch: { text_source?: string; text_target?: string }) => {
     setLocalCues((cs) => cs.map((c) => (c.id === cueId ? { ...c, ...patch } : c)));
@@ -218,6 +229,7 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
             <Icon name="chevron-left" className="size-5" />
           </Link>
           <h1 lang="ja" className="min-w-0 flex-1 truncate font-jp text-sm font-semibold">{lesson.title}</h1>
+          {shareButton}
           {canEdit && (
             <IconButton label="Sửa bài" pressed={editMode} onClick={() => setEditMode((e) => !e)}>
               <Icon name="pencil" className="size-[18px]" />
@@ -241,7 +253,7 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
           </div>
         )}
 
-        <StudyControls className="hidden lg:flex" {...controls} />
+        <StudyControls className="hidden lg:flex" extra={shareButton} {...controls} />
 
         <div className="flex items-center justify-between gap-2 lg:hidden">
           <SegmentedControl

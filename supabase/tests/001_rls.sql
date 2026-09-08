@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(10);
 
 -- Fixtures (chạy quyền postgres, bypass RLS)
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at) values
@@ -38,6 +38,11 @@ select throws_ok(
   $$insert into public.known_words (user_id, lang, term)
     values ('11111111-0000-4000-8000-000000000001','ja','盗む')$$,
   '42501', null, 'không ghi known_words hộ người khác');
+
+-- Share community (spec P2 §4.1): người khác đọc được visibility nhưng không đổi được (UPDATE 0 dòng, không lỗi)
+select is((select count(*) from public.lessons where id='bbbb0000-0000-4000-8000-00000000000b' and visibility='community'), 1::bigint, 'đọc được visibility bài community');
+update public.lessons set visibility='private' where id='bbbb0000-0000-4000-8000-00000000000b';
+select is((select visibility from public.lessons where id='bbbb0000-0000-4000-8000-00000000000b'), 'community', 'người khác không đổi được visibility (UPDATE 0 dòng)');
 
 select * from finish();
 rollback;

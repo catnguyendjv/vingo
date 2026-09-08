@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { percent } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
@@ -18,10 +19,11 @@ export type StudyControlsProps = {
   activeIdx: number; nextIdx: number;
 };
 
+// `extra`: slot render trước nút Sửa (StudyView cắm ShareButton cho owner — spec P2 §4.2).
 export function StudyControls({
-  className, abActive, onToggleAb, rate, onChangeRate, showTarget, onToggleTarget,
+  className, extra, abActive, onToggleAb, rate, onChangeRate, showTarget, onToggleTarget,
   onMarkUpToActive, onContinue, done, total, canEdit, editMode, onToggleEdit, activeIdx, nextIdx,
-}: StudyControlsProps & { className?: string }) {
+}: StudyControlsProps & { className?: string; extra?: ReactNode }) {
   const hint = abActive && activeIdx >= 0
     ? `Đang lặp câu #${activeIdx + 1} · bấm lại để tắt.`
     : nextIdx >= 0 ? `Tiếp tục sẽ nhảy tới câu #${nextIdx + 1}.` : "Đã học hết mọi câu.";
@@ -53,10 +55,15 @@ export function StudyControls({
               <span className="block text-[11px] text-muted">câu đã học</span>
             </span>
           </span>
-          {canEdit && (
-            <Button variant="soft" pressed={editMode} onClick={onToggleEdit} className="ml-auto">
-              <Icon name="pencil" className="size-[17px]" />Sửa
-            </Button>
+          {(extra || canEdit) && (
+            <span className="ml-auto flex items-center gap-2">
+              {extra}
+              {canEdit && (
+                <Button variant="soft" pressed={editMode} onClick={onToggleEdit}>
+                  <Icon name="pencil" className="size-[17px]" />Sửa
+                </Button>
+              )}
+            </span>
           )}
         </div>
       </div>
