@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CueRow, EnrollItem, LessonRow, VocabRow } from "@/lib/types";
 import { createReviewApi } from "@/lib/review-api";
 import { Html5PlayerAdapter, type PlayerAdapter } from "@/lib/player";
+import { checkMatch } from "@/lib/local-video";
 import { findActiveCueIndex, nextUndoneIndex } from "@/lib/cues";
 import { percent } from "@/lib/format";
 import { badgeFor } from "@/lib/lesson-status";
@@ -18,6 +19,7 @@ import { CueList } from "./CueList";
 import { VocabPanel } from "./VocabPanel";
 import { StudyControls } from "./StudyControls";
 import { MobileDock } from "./MobileDock";
+import { LocalVideoSource } from "./LocalVideoSource";
 
 export type StudyViewProps = {
   lesson: LessonRow; cues: CueRow[]; vocab: VocabRow[]; videoUrl: string | null;
@@ -27,6 +29,18 @@ export type StudyViewProps = {
 export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCueIds, initialKnownTerms, initialReviewTerms, canEdit, userId }: StudyViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<PlayerAdapter | null>(null);
+  // Video local (spec P2 §2.6): object URL của file người học chọn; revoke khi đổi file/unmount (effect bên dưới).
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
+  const [localWarn, setLocalWarn] = useState<string[]>([]);
+  const localFileRef = useRef<File | null>(null);
+  const pickLocal = (file: File) => {
+    localFileRef.current = file;
+    setLocalWarn([]);
+    setLocalUrl(URL.createObjectURL(file));
+  };
+  const clearLocal = () => { localFileRef.current = null; setLocalWarn([]); setLocalUrl(null); };
+  useEffect(() => () => { if (localUrl) URL.revokeObjectURL(localUrl); }, [localUrl]);
+  const src = videoUrl ?? localUrl;
   const [activeIdx, setActiveIdx] = useState(-1);
   const [showTarget, setShowTarget] = useState(true);
   const [rate, setRate] = useState(1);
@@ -82,7 +96,8 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
       if (cue) player.seekTo(cue.start_ms);
     }
     return () => { off(); player.destroy(); };
-  }, [localCues]);
+    // src: <video> chỉ mount sau khi có nguồn (bài local chọn file) → tạo lại adapter.
+  }, [localCues, src]);
 
   const seekToCue = (i: number) => { playerRef.current?.seekTo(localCues[i].start_ms); playerRef.current?.play(); };
   const toggleAb = () => {
@@ -196,8 +211,16 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
         <h1 lang="ja" className="hidden font-jp text-xl font-semibold leading-snug lg:block">{lesson.title}</h1>
 
         <div className="overflow-hidden rounded-md bg-video lg:rounded-lg">
-          {videoUrl ? (
-            <video ref={videoRef} src={videoUrl} controls playsInline className="aspect-video w-full" />
+          {src ? (
+            <video
+              ref={videoRef} src={src} controls playsInline className="aspect-video w-full"
+              onLoadedMetadata={(e) => {
+                if (!localFileRef.current) return;
+                setLocalWarn(checkMatch(localFileRef.current, e.currentTarget.duration, lesson).reasons);
+              }}
+            />
+          ) : lesson.video_provider === "local" ? (
+            <LocalVideoSource lesson={lesson} onFile={pickLocal} />
           ) : (
             <div className="flex aspect-video flex-col items-center justify-center gap-2 text-sm text-[#A89684]">
               <Icon name="video-off" className="size-9" />
@@ -206,6 +229,12 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
             </div>
           )}
         </div>
+        {localWarn.length > 0 && (
+          <div role="status" className="flex items-center justify-between gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning">
+            <span>File có thể không đúng ({localWarn.join(", ")}).</span>
+            <button type="button" className="font-semibold underline" onClick={clearLocal}>Chọn file khác</button>
+          </div>
+        )}
 
         <StudyControls className="hidden lg:flex" {...controls} />
 

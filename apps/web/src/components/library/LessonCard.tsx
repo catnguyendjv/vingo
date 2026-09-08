@@ -22,10 +22,13 @@ export function LessonCard({ lesson, thumbUrl, progress }: { lesson: LessonRow; 
           <img src={thumbUrl} alt="" className="size-full object-cover" />
         ) : (
           <div className="grid size-full place-items-center text-muted">
-            {lesson.status === "error"
-              ? <Icon name="alert-triangle" className="size-10 text-danger" />
+            {lesson.status === "error" ? <Icon name="alert-triangle" className="size-10 text-danger" />
+              : lesson.video_provider === "local" ? <Icon name="video" className="size-10" />
               : <Icon name="video-off" className="size-10" />}
           </div>
+        )}
+        {lesson.video_provider === "local" && (
+          <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white">Video local</span>
         )}
         {duration && (
           <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">

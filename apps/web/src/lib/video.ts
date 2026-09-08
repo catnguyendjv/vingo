@@ -22,6 +22,7 @@ async function cachedSignedUrl(
   return data.signedUrl;
 }
 
+// local: không có URL/thumb — web chọn file phía client (LocalVideoSource); cả 2 hàm dưới trả null.
 export async function getVideoUrl(supabase: SupabaseClient, lesson: LessonRow, userId: string): Promise<string | null> {
   if (lesson.video_provider !== "storage" || !lesson.video_ref) return null;
   return cachedSignedUrl(supabase, userId, lesson.video_ref);
