@@ -126,7 +126,8 @@ body {
 @media (hover: hover) {
   .fc:hover .fc-front { transform: rotateY(180deg); }
   .fc:hover .fc-back { transform: rotateY(0); }
-  .fc-actions { display: none; }          /* desktop: click thẻ = đánh dấu, không cần nút mặt sau */
+  /* desktop: click thẻ = đánh dấu nên ẩn nút đánh dấu/đóng ở mặt sau; giữ nút/chip Ôn tập (SRS) */
+  .fc-actions > :not([data-review]) { display: none; }
 }
 
 /* ===== Thẻ ôn tập (/review): lật theo state, KHÔNG lật khi hover ===== */

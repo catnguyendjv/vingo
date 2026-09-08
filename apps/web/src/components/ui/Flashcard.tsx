@@ -7,13 +7,15 @@ export type FlashcardProps = {
   term: string; reading: string | null; meaning: string | null;
   known: boolean; current?: boolean; size?: "sm" | "lg"; editable?: boolean;
   onToggleKnown: () => void; onRemove?: () => void;
+  /** SRS: từ đã có card đang hoạt động → chip "Đang ôn" thay nút. */
+  inReview?: boolean; onEnroll?: () => void;
 };
 
 function hoverCapable(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
 }
 
-export function Flashcard({ term, reading, meaning, known, current, size = "sm", editable, onToggleKnown, onRemove }: FlashcardProps) {
+export function Flashcard({ term, reading, meaning, known, current, size = "sm", editable, onToggleKnown, onRemove, inReview, onEnroll }: FlashcardProps) {
   const [flipped, setFlipped] = useState(false);
   const [focused, setFocused] = useState(false);
   const revealed = flipped || focused;
@@ -59,7 +61,19 @@ export function Flashcard({ term, reading, meaning, known, current, size = "sm",
       <div className={cn(face, "fc-back border-line bg-surface-2")} aria-hidden={!revealed}>
         {reading && <span lang="ja" className={readingCls}>{reading}</span>}
         <span className={cn("leading-snug text-ink", lg ? "text-sm" : "text-[13px]")}>{meaning ?? "—"}</span>
-        <span className="fc-actions mt-1.5 flex gap-1.5">
+        <span className="fc-actions mt-1.5 flex flex-wrap gap-1.5">
+          {onEnroll && (inReview ? (
+            <span data-review className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">Đang ôn</span>
+          ) : (
+            <button
+              type="button" data-review data-testid="flashcard-enroll"
+              tabIndex={revealed ? 0 : -1}
+              onClick={(e) => { e.stopPropagation(); onEnroll(); closeBack(e.currentTarget); }}
+              className="rounded-full border border-line bg-surface px-2 py-0.5 text-[11px] font-medium hover:border-muted"
+            >
+              ＋ Ôn tập
+            </button>
+          ))}
           <button
             type="button"
             tabIndex={revealed ? 0 : -1}

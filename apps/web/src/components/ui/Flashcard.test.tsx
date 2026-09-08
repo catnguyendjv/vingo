@@ -99,3 +99,21 @@ describe("Flashcard", () => {
     expect(back.getAttribute("aria-hidden")).toBe("true");
   });
 });
+
+describe("SRS enroll", () => {
+  beforeEach(() => mockHover(false));
+  it("mặt sau có nút Ôn tập → onEnroll; inReview → chip Đang ôn", () => {
+    const enroll = vi.fn();
+    const { rerender } = render(<Flashcard {...base} onToggleKnown={() => {}} onEnroll={enroll} />);
+    fireEvent.click(screen.getByRole("button", { name: "採用状況: đánh dấu đã thuộc" }));
+    fireEvent.click(screen.getByTestId("flashcard-enroll"));
+    expect(enroll).toHaveBeenCalledTimes(1);
+    rerender(<Flashcard {...base} onToggleKnown={() => {}} onEnroll={enroll} inReview />);
+    expect(screen.queryByTestId("flashcard-enroll")).toBeNull();
+    expect(screen.getByText("Đang ôn")).toBeTruthy();
+  });
+  it("không có onEnroll → không có nút", () => {
+    render(<Flashcard {...base} onToggleKnown={() => {}} />);
+    expect(screen.queryByTestId("flashcard-enroll")).toBeNull();
+  });
+});

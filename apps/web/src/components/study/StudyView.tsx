@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CueRow, LessonRow, VocabRow } from "@/lib/types";
+import type { CueRow, EnrollItem, LessonRow, VocabRow } from "@/lib/types";
+import { createReviewApi } from "@/lib/review-api";
 import { Html5PlayerAdapter, type PlayerAdapter } from "@/lib/player";
 import { findActiveCueIndex, nextUndoneIndex } from "@/lib/cues";
 import { percent } from "@/lib/format";
@@ -20,10 +21,10 @@ import { MobileDock } from "./MobileDock";
 
 export type StudyViewProps = {
   lesson: LessonRow; cues: CueRow[]; vocab: VocabRow[]; videoUrl: string | null;
-  initialDoneCueIds: string[]; initialKnownTerms: string[]; canEdit: boolean; userId: string;
+  initialDoneCueIds: string[]; initialKnownTerms: string[]; initialReviewTerms: string[]; canEdit: boolean; userId: string;
 };
 
-export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCueIds, initialKnownTerms, canEdit, userId }: StudyViewProps) {
+export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCueIds, initialKnownTerms, initialReviewTerms, canEdit, userId }: StudyViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const playerRef = useRef<PlayerAdapter | null>(null);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -37,6 +38,14 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   const supabase = useMemo(() => createClient(), []);
   const [doneIds, setDoneIds] = useState<Set<string>>(new Set(initialDoneCueIds));
   const [knownTerms, setKnownTerms] = useState<Set<string>>(new Set(initialKnownTerms));
+  const [reviewTerms, setReviewTerms] = useState<Set<string>>(new Set(initialReviewTerms));
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const notify = (m: string) => {
+    setToast(m);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2500);
+  };
   const [editMode, setEditMode] = useState(false);
   const [localCues, setLocalCues] = useState(cues);
   const [localVocab, setLocalVocab] = useState(vocab);
@@ -114,9 +123,44 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
       await supabase.from("known_words").delete().match({ lang: lesson.source_lang, term });
     } else {
       next.add(term); setKnownTerms(next);
+      // Trigger DB sẽ suspend card SRS; bỏ chip "Đang ôn" ngay cho khớp.
+      setReviewTerms((s) => { const n = new Set(s); n.delete(term); return n; });
       await supabase.from("known_words").upsert({
         user_id: userId, lang: lesson.source_lang, term, reading, meaning, first_lesson_id: lesson.id,
       });
+    }
+  };
+
+  // ---- SRS enroll (spec P1.5 §4.3) ----
+  const reviewApi = useMemo(() => createReviewApi(supabase), [supabase]);
+  const itemOf = (v: VocabRow): EnrollItem => ({
+    lang: lesson.source_lang, term: v.term, reading: v.reading, meaning: v.meaning, lesson_id: lesson.id, cue_id: v.cue_id,
+  });
+  const enrollTerm = async (v: VocabRow) => {
+    setReviewTerms((s) => new Set(s).add(v.term));
+    setKnownTerms((s) => { const n = new Set(s); n.delete(v.term); return n; });   // RPC gỡ known_words
+    try {
+      await reviewApi.enroll([itemOf(v)]);
+      notify(`Đã đưa ${v.term} vào ôn tập`);
+    } catch (e) {
+      setReviewTerms((s) => { const n = new Set(s); n.delete(v.term); return n; });
+      notify(`Lỗi: ${(e as Error).message}`);
+    }
+  };
+  const enrollable = useMemo(() => {
+    const seen = new Set<string>();
+    return localVocab.filter((v) => !knownTerms.has(v.term) && !reviewTerms.has(v.term) && !seen.has(v.term) && !!seen.add(v.term));
+  }, [localVocab, knownTerms, reviewTerms]);
+  const enrollLesson = async () => {
+    if (!enrollable.length) return notify("Không còn từ nào để thêm");
+    const terms = enrollable.map((v) => v.term);
+    setReviewTerms((s) => new Set([...s, ...terms]));
+    try {
+      const r = await reviewApi.enroll(enrollable.map(itemOf));
+      notify(`Đã thêm ${r.created} từ vào ôn tập${r.reactivated ? `, ${r.reactivated} từ đã có` : ""}`);
+    } catch (e) {
+      setReviewTerms((s) => { const n = new Set(s); terms.forEach((t) => n.delete(t)); return n; });
+      notify(`Lỗi: ${(e as Error).message}`);
     }
   };
 
@@ -193,10 +237,16 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
             editMode={editMode}
             onAdd={(term, reading, meaning) => activeIdx >= 0 && addVocab(localCues[activeIdx].id, term, reading, meaning)}
             onRemove={removeVocab}
+            reviewTerms={reviewTerms} onEnroll={enrollTerm} onEnrollAll={enrollLesson} enrollableCount={enrollable.length}
           />
         </div>
       </div>
 
+      {toast && (
+        <div role="status" data-testid="study-toast" className="fixed bottom-[96px] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-ink px-4 py-2 text-sm text-page shadow-card lg:bottom-6">
+          {toast}
+        </div>
+      )}
       <MobileDock {...controls} />
     </main>
   );

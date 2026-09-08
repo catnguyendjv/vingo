@@ -7,9 +7,14 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Input } from "@/components/ui/Input";
 
-export function VocabPanel({ vocab, knownTerms, onToggleKnown, activeCueId, activeIdx, editMode, onAdd, onRemove }: {
+export function VocabPanel({
+  vocab, knownTerms, onToggleKnown, activeCueId, activeIdx, editMode, onAdd, onRemove,
+  reviewTerms, onEnroll, onEnrollAll, enrollableCount,
+}: {
   vocab: VocabRow[]; knownTerms: Set<string>;
   onToggleKnown: (term: string, reading: string | null, meaning: string | null) => void;
+  /** SRS: từ đang có card hoạt động; enroll per-từ và cả bài (số từ còn enroll được). */
+  reviewTerms: Set<string>; onEnroll: (v: VocabRow) => void; onEnrollAll: () => void; enrollableCount: number;
   activeCueId: string | null; activeIdx: number;
   editMode: boolean;
   onAdd: (term: string, reading: string, meaning: string) => void;
@@ -30,6 +35,7 @@ export function VocabPanel({ vocab, knownTerms, onToggleKnown, activeCueId, acti
       known={knownTerms.has(v.term)} current={v.cue_id === activeCueId} editable={editMode}
       onToggleKnown={() => onToggleKnown(v.term, v.reading, v.meaning)}
       onRemove={() => onRemove(v.id)}
+      inReview={reviewTerms.has(v.term)} onEnroll={() => onEnroll(v)}
     />
   );
   const empty = <p className="text-sm text-muted">Câu này chưa có từ vựng.</p>;
@@ -47,10 +53,16 @@ export function VocabPanel({ vocab, knownTerms, onToggleKnown, activeCueId, acti
             items={[{ value: "cue", label: `Câu này · ${current.length}` }, { value: "all", label: `Tất cả · ${visible.length}` }]}
           />
         </div>
-        <Button variant="ghost" size="sm" className="ml-auto" pressed={hideKnown} onClick={() => setHideKnown((h) => !h)}>
-          <Icon name={hideKnown ? "eye" : "eye-off"} className="size-4" />
-          {hideKnown ? "Hiện" : "Ẩn"} từ thuộc
-        </Button>
+        <span className="ml-auto flex items-center gap-1.5">
+          <Button variant="soft" size="sm" data-testid="enroll-all" disabled={enrollableCount === 0} onClick={onEnrollAll} title="Đưa mọi từ chưa thuộc, chưa ôn vào ôn tập">
+            <Icon name="flip" className="size-4" />
+            Ôn tập cả bài{enrollableCount > 0 && <span className="tabular-nums text-muted">· {enrollableCount}</span>}
+          </Button>
+          <Button variant="ghost" size="sm" pressed={hideKnown} onClick={() => setHideKnown((h) => !h)}>
+            <Icon name={hideKnown ? "eye" : "eye-off"} className="size-4" />
+            {hideKnown ? "Hiện" : "Ẩn"} từ thuộc
+          </Button>
+        </span>
       </header>
 
       <div className="flex flex-col gap-4 p-4">
