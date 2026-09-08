@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-export function AppHeader() {
+export function AppHeader({ reviewDue = 0 }: { reviewDue?: number }) {
   return (
     <header className="border-b border-line bg-page">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-3 sm:px-6">
@@ -13,6 +13,25 @@ export function AppHeader() {
           Vingo
         </Link>
         <nav className="flex items-center gap-1.5">
+          <Link
+            href="/review"
+            aria-label="Ôn tập"
+            data-testid="review-nav"
+            className="inline-flex items-center gap-2 rounded-full px-3.5 py-2 font-medium transition-colors hover:bg-surface-2"
+          >
+            <Icon name="flip" className="size-[18px]" />
+            <span className="hidden sm:inline">
+              <span lang="ja" className="font-jp text-muted">復習</span> Ôn tập
+            </span>
+            {reviewDue > 0 && (
+              <span
+                data-testid="review-badge"
+                className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-bold leading-none tabular-nums text-accent-fg"
+              >
+                {reviewDue > 99 ? "99+" : reviewDue}
+              </span>
+            )}
+          </Link>
           <Link
             href="/dictionary"
             aria-label="Từ điển"
