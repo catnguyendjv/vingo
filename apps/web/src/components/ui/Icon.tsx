@@ -25,6 +25,7 @@ const PATHS = {
   "arrow-up-right": <><path d="M7 7h10v10" /><path d="M7 17 17 7" /></>,
   "chevron-down": <path d="m6 9 6 6 6-6" />,
   "chevron-left": <path d="m15 18-6-6 6-6" />,
+  "chevron-right": <path d="m9 18 6-6-6-6" />,
   users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
   flip: <><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></>,
   mail: <><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></>,

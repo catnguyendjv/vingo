@@ -5,7 +5,8 @@ import type { CueRow, EnrollItem, LessonRow, VocabRow } from "@/lib/types";
 import { createReviewApi } from "@/lib/review-api";
 import type { PlayerAdapter, PlayerState } from "@/lib/player";
 import { checkMatch } from "@/lib/local-video";
-import { findActiveCueIndex, nextUndoneIndex } from "@/lib/cues";
+import { findActiveCueIndex, nextUndoneIndex, stepIndex } from "@/lib/cues";
+import { useWakeLock } from "@/lib/use-wake-lock";
 import { percent } from "@/lib/format";
 import { badgeFor } from "@/lib/lesson-status";
 import { cn } from "@/lib/cn";
@@ -30,8 +31,9 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   const playerRef = useRef<PlayerAdapter | null>(null);
   // YouTube không cho seek trước cử chỉ đầu (spec P2 §3.2): giữ seek ban đầu, áp khi state PLAYING lần đầu.
   const pendingSeekRef = useRef<number | null>(null);
-  // Trạng thái phát: lộ ra data-player-state trên <main>; Task 12 (Wake Lock) dùng tiếp.
+  // Trạng thái phát: lộ ra data-player-state trên <main>; Wake Lock giữ màn hình sáng khi đang phát (spec P2 §6 M5).
   const [playerState, setPlayerState] = useState<PlayerState>("paused");
+  useWakeLock(playerState === "playing");
   // Video local (spec P2 §2.6): object URL của file người học chọn; revoke khi đổi file/unmount (effect bên dưới).
   const [localUrl, setLocalUrl] = useState<string | null>(null);
   const [localWarn, setLocalWarn] = useState<string[]>([]);
@@ -93,16 +95,20 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
     await supabase.from("vocab_items").delete().eq("id", id);
   };
 
-  // Seek ban đầu từ hash `#cue=<idx>` / `#cueid=<uuid>`; chỉ tính một lần cho cả phiên (Task 12 sẽ thêm câu chưa học đầu).
+  // Seek ban đầu: hash `#cue=<idx>` / `#cueid=<uuid>`; không có hash → câu chưa học đầu (spec P2 §6 M6).
+  // Chỉ tính một lần cho cả phiên. i = 0 hoặc -1 (chưa học gì / học hết) → không seek.
   const initialSeekMs = (): number | null => {
     if (hashSeekDone.current) return null;
     hashSeekDone.current = true;
     const cs = localCuesRef.current;
     const mIdx = location.hash.match(/^#cue=(\d+)$/);
     const mId = location.hash.match(/^#cueid=([0-9a-f-]{36})$/);
-    const cue = mIdx ? cs.find((c) => c.idx === Number(mIdx[1]))
-             : mId ? cs.find((c) => c.id === mId[1]) : undefined;
-    return cue ? cue.start_ms : null;
+    if (mIdx || mId) {
+      const cue = mIdx ? cs.find((c) => c.idx === Number(mIdx[1])) : cs.find((c) => c.id === mId![1]);
+      return cue ? cue.start_ms : null;
+    }
+    const i = nextUndoneIndex(cs, doneIds);
+    return i > 0 ? cs[i].start_ms : null;
   };
   // VideoFrame gọi mỗi khi tạo adapter mới (đổi nguồn: bài local chọn file); adapter cũ đã destroy → listener tự gỡ.
   const onPlayerReady = (player: PlayerAdapter) => {
@@ -263,7 +269,22 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
               { value: "vocab", label: <>Từ vựng · <span className="tabular-nums">{localVocab.length}</span></> },
             ]}
           />
-          <ProgressRing value={percent(doneIds.size, localCues.length)} size={32} label />
+          {/* ‹ › nhảy câu: chưa có câu đang phát → câu chưa học đầu (spec P2 §6 M6) */}
+          <div className="flex items-center gap-1">
+            <IconButton
+              label="Câu trước" data-testid="prev-cue" disabled={!localCues.length}
+              onClick={() => seekToCue(stepIndex(activeIdx, -1, localCues.length, nextIdx))}
+            >
+              <Icon name="chevron-left" className="size-5" />
+            </IconButton>
+            <IconButton
+              label="Câu sau" data-testid="next-cue" disabled={!localCues.length}
+              onClick={() => seekToCue(stepIndex(activeIdx, 1, localCues.length, nextIdx))}
+            >
+              <Icon name="chevron-right" className="size-5" />
+            </IconButton>
+            <ProgressRing value={percent(doneIds.size, localCues.length)} size={32} label />
+          </div>
         </div>
       </div>
 
