@@ -1,6 +1,6 @@
 # Vingo P2 — Video local, YouTube, share community, PWA offline, polish mobile (Design Spec)
 
-Ngày: 2026-09-08. Bổ sung cho spec master `2026-08-28-vingo-design.md` §6.1 (trang học, share),
+Ngày: 2026-09-08. **Trạng thái: đã triển khai** (commit `1640230`…`14de2df`, plan `docs/superpowers/plans/2026-09-08-vingo-p2.md`); còn kiểm tay trên điện thoại thật (§1.3). Bổ sung cho spec master `2026-08-28-vingo-design.md` §6.1 (trang học, share),
 §6.2 (player abstraction), §6.4 (PWA) và §8 (phase P2). Khi lệch nhau, spec này thắng cho phạm vi P2.
 
 ## 1. Mục tiêu & phạm vi
