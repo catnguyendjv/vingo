@@ -129,6 +129,17 @@ body {
   .fc-actions { display: none; }          /* desktop: click thẻ = đánh dấu, không cần nút mặt sau */
 }
 
+/* ===== Thẻ ôn tập (/review): lật theo state, KHÔNG lật khi hover ===== */
+.rc { perspective: 1000px; }
+.rc-front, .rc-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1);
+}
+.rc-back { transform: rotateY(180deg); }
+.rc-flipped .rc-front { transform: rotateY(180deg); }
+.rc-flipped .rc-back { transform: rotateY(0); }
+
 /* ===== Reduced motion ===== */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; scroll-behavior: auto !important; }
@@ -136,4 +147,8 @@ body {
   .fc-flipped .fc-front, .fc:focus-within .fc-front, .fc:hover .fc-front { transform: none; opacity: 0; visibility: hidden; }
   .fc-back { transform: none; opacity: 0; visibility: hidden; }
   .fc-flipped .fc-back, .fc:focus-within .fc-back, .fc:hover .fc-back { opacity: 1; visibility: visible; }
+  .rc-front, .rc-back { transition: none; }
+  .rc-flipped .rc-front { transform: none; opacity: 0; visibility: hidden; }
+  .rc-back { transform: none; opacity: 0; visibility: hidden; }
+  .rc-flipped .rc-back { opacity: 1; visibility: visible; }
 }
