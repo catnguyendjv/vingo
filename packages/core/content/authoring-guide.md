@@ -22,9 +22,10 @@ Nguyên tắc lớn: phần giá trị nhất của một bài là **làm ngôn 
   "source_ref": "zoom uuid / youtube url / tên file",  // optional
   "source_lang": "ja",             // BCP-47 ngắn: ja, vi, en...
   "target_lang": "vi",
-  "video_provider": "youtube",     // optional: 'storage' | 'youtube'
-  "video_ref": "dQw4w9WgXcQ",      // optional: youtube video id (khi provider=youtube)
-  "duration_sec": 1830,            // optional (server đo lại khi ingest storage)
+  "video_provider": "youtube",     // optional: 'storage' | 'youtube' | 'local'
+  "video_ref": "dQw4w9WgXcQ",      // youtube: video id · local: tên file gốc (gợi ý cho người học) · storage: bỏ trống
+  "duration_sec": 1830,            // optional; local: nên có (web dùng cảnh báo chọn nhầm file); storage: server đo lại khi ingest
+  "video_size_bytes": 734003200,   // optional; local: kích cỡ file gốc nếu biết
   "cues": [
     {
       "id": "uuid-v4",             // client sinh, ỔN ĐỊNH
@@ -80,6 +81,12 @@ phải là một `cue.id` có thật, ít nhất 1 cue.
   ]
 }
 ```
+
+### Video local (`video_provider: "local"`)
+
+Video KHÔNG upload; bài `ready` ngay khi create_lesson. Người học mở bài trên web và tự chọn file
+trên máy. Điền `video_ref` = tên file, `duration_sec` (bắt buộc có nếu nguồn cho biết),
+`video_size_bytes` nếu biết. KHÔNG gọi ingest_video_from_url / request_video_upload / finalize_lesson.
 
 ---
 

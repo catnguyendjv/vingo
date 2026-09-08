@@ -51,16 +51,20 @@ const LESSON_EXAMPLE = {
 export function registerTools(server: McpServer, userId: string): void {
   const ctx = coreContext(userId);
 
-  // Xác nhận lesson thuộc sở hữu user (RLS đọc + so owner). Trả owner_id + status.
-  async function verifyOwned(lessonId: string): Promise<{ ownerId: string; status: string }> {
+  // Bài video_provider = 'local' không nhận video lên cloud (spec P2 §2.4).
+  const LOCAL_VIDEO_MSG =
+    "Bài này là video local (không nhận video lên cloud). Muốn lưu cloud: tạo lại bài với video_provider 'storage'.";
+
+  // Xác nhận lesson thuộc sở hữu user (RLS đọc + so owner). Trả owner_id + status + provider.
+  async function verifyOwned(lessonId: string): Promise<{ ownerId: string; status: string; provider: string | null }> {
     const { data, error } = await ctx.supabase
       .from("lessons")
-      .select("owner_id, status")
+      .select("owner_id, status, video_provider")
       .eq("id", lessonId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!data || data.owner_id !== userId) throw new Error("Không tìm thấy bài hoặc bài không thuộc về bạn.");
-    return { ownerId: data.owner_id, status: data.status };
+    return { ownerId: data.owner_id, status: data.status, provider: data.video_provider };
   }
 
   server.registerTool("whoami", { description: "Xác nhận kết nối; trả display_name + user_id." }, async () => {
@@ -129,7 +133,8 @@ export function registerTools(server: McpServer, userId: string): void {
     },
     async ({ lesson_id, url }) => {
       try {
-        const { ownerId } = await verifyOwned(lesson_id);
+        const { ownerId, provider } = await verifyOwned(lesson_id);
+        if (provider === "local") return errText(LOCAL_VIDEO_MSG);
         // Fail-fast SSRF: protocol + host (guard đầy đủ chạy lại lúc tải trong job).
         const u = new URL(url);
         if (u.protocol !== "http:" && u.protocol !== "https:") return errText("Chỉ hỗ trợ http/https.");
@@ -169,7 +174,8 @@ export function registerTools(server: McpServer, userId: string): void {
     },
     async ({ lesson_id, kind }) => {
       try {
-        const { ownerId } = await verifyOwned(lesson_id);
+        const { ownerId, provider } = await verifyOwned(lesson_id);
+        if (provider === "local") return errText(LOCAL_VIDEO_MSG);
         const path = kind === "thumb" ? thumbPath(ownerId, lesson_id) : videoPath(ownerId, lesson_id);
         const { signedUrl, token } = await createSignedUpload(path);
         return text({
@@ -190,7 +196,8 @@ export function registerTools(server: McpServer, userId: string): void {
     { description: "Đường B: kiểm tra file đã upload rồi chạy pipeline. Idempotent.", inputSchema: { lesson_id: z.string().uuid() } },
     async ({ lesson_id }) => {
       try {
-        const { ownerId } = await verifyOwned(lesson_id);
+        const { ownerId, provider } = await verifyOwned(lesson_id);
+        if (provider === "local") return errText(LOCAL_VIDEO_MSG);
         if (isRunning(lesson_id)) return text({ status: "processing", message: "Đang xử lý." });
 
         const info = await getObjectInfo(videoPath(ownerId, lesson_id));

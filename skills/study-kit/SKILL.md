@@ -33,12 +33,25 @@ Cần MCP `study-kit` đã add + login (OAuth pairing). Nếu `whoami` lỗi/ch�
 
 4. **Dựng lesson JSON nháp** (uuid client sinh cho lesson + mỗi cue + mỗi vocab) theo guide.
    Gọi **`get_known_words(lang)`** để loại từ đã thuộc khỏi vocab.
+   **Quyết định provider video TRƯỚC khi gọi create_lesson** (chi tiết ở bước 6):
+   - YouTube → `video_provider: "youtube"`, không hỏi.
+   - Còn lại (Zoom / link / file local) → hỏi user ĐÚNG 1 câu:
+     > Video này để **local** (mặc định — không upload, khi học sẽ chọn file trên máy) hay **lưu cloud**?
+     Không trả lời → `local`. Local: điền `video_provider: "local"`, `video_ref: "<tên file gốc>"`,
+     `duration_sec`, `video_size_bytes` (nếu biết). Cloud: `video_provider: "storage"`.
 
 5. **`create_lesson({ lesson })`** → nhận `{ lesson_id, web_url, video_next_step, already_exists }`.
    - `already_exists: true` (bài đã ready/processing) → không đè; muốn sửa thì sửa trên web.
 
-6. **Video**:
+6. **Video** (provider đã quyết định ở bước 4):
    - **YouTube**: xong luôn (không có video file, bài đã `ready`).
+   - **Local (mặc định cho Zoom / link / file local; user không trả lời → local)**: đã điền trong
+     `create_lesson` `video_provider: "local"`, `video_ref: "<tên file gốc>"`, `duration_sec`
+     (Zoom: từ metadata recording; video-download-mcp: `get_video_info`; file local: hỏi user
+     hoặc bỏ trống), `video_size_bytes` nếu biết. KHÔNG gọi tool video nào (server từ chối
+     ingest/upload/finalize trên bài local). Báo `web_url` + nhắc: "mở bài, bấm *Chọn video trên
+     máy* và trỏ tới file `<tên>`". Bỏ qua bước 7.
+   - **Cloud** (`video_provider: "storage"`): đi đường A/B bên dưới.
    - **Đường A (ưu tiên)** — có direct-download link: `ingest_video_from_url({ lesson_id, url })`.
      - Zoom: lấy URL qua `get_recording_video_url` layout `gallery_view` (tránh bản `(CC)`) rồi
        gọi ingest **NGAY** (token URL sống ~1h).
