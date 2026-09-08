@@ -42,14 +42,18 @@ export class YouTubePlayerAdapter implements PlayerAdapter {
   private playing = false;
 
   constructor(
-    container: HTMLElement,
+    private container: HTMLElement,
     videoId: string,
     private opts: { onError: (code: number) => void; onReady?: () => void },
   ) {
     loadYouTubeApi()
       .then((yt) => {
         if (this.destroyed) return;
-        this.player = new yt.Player(container, {
+        // YT.Player THAY THẾ element được truyền vào bằng <iframe> → không đưa thẳng container (div có ref của React)
+        // mà tạo host con; destroy() dọn iframe khỏi container để React unmount không lỗi removeChild.
+        const host = document.createElement("div");
+        container.appendChild(host);
+        this.player = new yt.Player(host, {
           videoId,
           width: "100%",
           height: "100%",
@@ -121,5 +125,6 @@ export class YouTubePlayerAdapter implements PlayerAdapter {
     this.stateListeners.clear();
     this.player?.destroy();
     this.player = null;
+    this.container.replaceChildren();
   }
 }
