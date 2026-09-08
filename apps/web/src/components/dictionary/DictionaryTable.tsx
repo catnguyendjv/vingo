@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { createReviewApi } from "@/lib/review-api";
 import { cn } from "@/lib/cn";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +12,7 @@ import { Icon } from "@/components/ui/Icon";
 
 export type DictEntry = {
   lang: string; term: string; reading: string | null; meaning: string | null;
-  occurrences: number; lesson_ids: string[]; cue_ids: string[]; is_known: boolean;
+  occurrences: number; lesson_ids: string[]; cue_ids: string[]; is_known: boolean; in_review: boolean;
 };
 type Filter = "all" | "unknown" | "known";
 const FILTERS: { value: Filter; label: string }[] = [
@@ -22,8 +23,11 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
   const supabase = useMemo(() => createClient(), []);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [known, setKnown] = useState<Set<string>>(new Set(entries.filter((e) => e.is_known).map((e) => `${e.lang}:${e.term}`)));
   const keyOf = (e: DictEntry) => `${e.lang}:${e.term}`;
+  const [known, setKnown] = useState<Set<string>>(new Set(entries.filter((e) => e.is_known).map(keyOf)));
+  const [inReview, setInReview] = useState<Set<string>>(new Set(entries.filter((e) => e.in_review).map(keyOf)));
+  const [notice, setNotice] = useState<string | null>(null);
+  const reviewApi = useMemo(() => createReviewApi(supabase), [supabase]);
 
   const rows = useMemo(() => entries.filter((e) => {
     const k = known.has(keyOf(e));
@@ -41,9 +45,37 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
       await supabase.from("known_words").delete().match({ lang: e.lang, term: e.term });
     } else {
       next.add(key); setKnown(next);
+      // Trigger DB suspend card SRS → bỏ chip "Đang ôn" ngay.
+      setInReview((s) => { const n = new Set(s); n.delete(key); return n; });
       await supabase.from("known_words").upsert({ user_id: userId, lang: e.lang, term: e.term, reading: e.reading, meaning: e.meaning });
     }
   };
+
+  // SRS: đưa 1 từ vào ôn tập (RPC tự gỡ known_words; first-wins nếu card đã có).
+  const enroll = async (e: DictEntry) => {
+    const key = keyOf(e);
+    setInReview((s) => new Set(s).add(key));
+    setKnown((s) => { const n = new Set(s); n.delete(key); return n; });
+    setNotice(null);
+    try {
+      await reviewApi.enroll([{
+        lang: e.lang, term: e.term, reading: e.reading, meaning: e.meaning,
+        lesson_id: e.lesson_ids[0] ?? null, cue_id: e.cue_ids[0] ?? null,
+      }]);
+    } catch (err) {
+      setInReview((s) => { const n = new Set(s); n.delete(key); return n; });
+      setNotice(`Không đưa được vào ôn tập: ${(err as Error).message}`);
+    }
+  };
+  const reviewCell = (e: DictEntry) => inReview.has(keyOf(e)) ? (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+      <Icon name="flip" className="size-3" />Đang ôn
+    </span>
+  ) : (
+    <Button size="sm" variant="soft" data-testid="dict-enroll" onClick={() => enroll(e)} className="min-h-[28px] px-2.5 text-[12px]">
+      <Icon name="flip" className="size-3.5" />Ôn tập
+    </Button>
+  );
 
   const exportCsv = () => {
     const esc = (s: string | null) => `"${(s ?? "").replaceAll('"', '""')}"`;
@@ -74,6 +106,8 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
         </div>
       </div>
 
+      {notice && <p role="alert" className="rounded-md border border-danger/40 bg-danger-soft px-3 py-2 text-sm text-danger">{notice}</p>}
+
       {/* Desktop: bảng */}
       <div className="hidden overflow-x-auto rounded-lg border border-line bg-surface md:block">
         <table data-testid="dict-table" className="w-full text-left text-sm">
@@ -82,6 +116,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
               <th className="w-12 px-4 py-2.5"><span className="sr-only">Đã thuộc</span>✓</th>
               <th className="px-3 py-2.5" lang="ja">単語</th><th className="px-3 py-2.5">Cách đọc</th>
               <th className="px-3 py-2.5">Nghĩa</th><th className="px-3 py-2.5">×N</th><th className="px-3 py-2.5">Câu</th>
+              <th className="px-3 py-2.5">Ôn tập</th>
             </tr>
           </thead>
           <tbody>
@@ -99,6 +134,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
                       mở câu<Icon name="arrow-up-right" className="size-3.5" />
                     </a>
                   </td>
+                  <td className="px-3 py-2">{reviewCell(e)}</td>
                 </tr>
               );
             })}
@@ -122,6 +158,7 @@ export function DictionaryTable({ entries, userId }: { entries: DictEntry[]; use
                 <p className="mt-2 flex items-center gap-3 text-xs">
                   <span className="rounded-full bg-surface-2 px-2 py-0.5 tabular-nums text-muted">×{e.occurrences}</span>
                   <a className="inline-flex items-center gap-1 font-medium text-accent" href={openHref(e)}>mở câu<Icon name="arrow-up-right" className="size-3.5" /></a>
+                  <span className="ml-auto">{reviewCell(e)}</span>
                 </p>
               </div>
             </li>
