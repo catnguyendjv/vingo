@@ -25,6 +25,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  // Standalone iOS/Android: vẽ tràn dưới tai thỏ, component tự đệm env(safe-area-inset-*) (spec P2 §6 M7).
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#FAF6F0" },
     { media: "(prefers-color-scheme: dark)", color: "#1C1714" },

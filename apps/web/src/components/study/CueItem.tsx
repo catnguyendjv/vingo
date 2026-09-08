@@ -23,7 +23,7 @@ export function CueItem({
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSeek(); }
       }}
       className={cn(
-        "grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-md border-l-[3px] px-3 py-2.5 transition-colors scroll-mt-[330px] lg:scroll-mt-2",
+        "grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-md border-l-[3px] px-3 py-2.5 transition-colors scroll-mt-[330px] lg:scroll-mt-2 land:scroll-mt-2",
         active ? "border-accent bg-active-cue" : "border-transparent hover:bg-surface-2",
       )}
     >

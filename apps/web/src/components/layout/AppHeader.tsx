@@ -4,7 +4,9 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export function AppHeader({ reviewDue = 0 }: { reviewDue?: number }) {
   return (
-    <header className="border-b border-line bg-page">
+    // Đệm safe-area (standalone, spec P2 §6 M7). Điện thoại xoay ngang chỉ ẩn ở trang học (main[data-page=study]) —
+    // các trang khác vẫn cần nav.
+    <header data-testid="app-header" className="border-b border-line bg-page pt-[env(safe-area-inset-top)] land:group-has-[[data-page=study]]/app:hidden">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5 text-[19px] font-bold tracking-[-0.02em]">
           <span className="grid size-[30px] place-items-center rounded-sm bg-accent text-accent-fg">

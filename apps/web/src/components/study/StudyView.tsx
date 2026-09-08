@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CueRow, EnrollItem, LessonRow, VocabRow } from "@/lib/types";
 import { createReviewApi } from "@/lib/review-api";
 import type { PlayerAdapter, PlayerState } from "@/lib/player";
@@ -213,6 +213,31 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   };
 
   const [mobileTab, setMobileTab] = useState<"cues" | "vocab">("cues");
+  // M2: điện thoại dọc cuộn quá 120px → video co lại neo phải hàng tiêu đề (spec P2 §6). Chỉ đổi class, không remount
+  // VideoFrame (YouTube iframe co bằng CSS). Ngưỡng trễ 120/60 để không nháy quanh mốc; desktop / landscape luôn "full".
+  const [videoMode, setVideoMode] = useState<"full" | "compact">("full");
+  useEffect(() => {
+    const phonePortrait = () =>
+      window.innerWidth < 1024 && !(window.innerWidth > window.innerHeight && window.innerHeight <= 500);
+    const update = () => {
+      const y = window.scrollY;
+      setVideoMode((m) => (!phonePortrait() ? "full" : y > 120 ? "compact" : y < 60 ? "full" : m));
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, []);
+  // Khối sticky co lại thì chèn spacer đúng bằng phần vừa co để nội dung bên dưới không nhảy (document giữ nguyên
+  // chiều cao → không dao động quanh ngưỡng cuộn, cue đang tap không đổi vị trí). Đo trước paint (layout effect).
+  const stickyRef = useRef<HTMLDivElement>(null);
+  const fullHeightRef = useRef(0);
+  const [spacer, setSpacer] = useState(0);
+  useLayoutEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+    if (videoMode === "full") { fullHeightRef.current = el.offsetHeight; setSpacer(0); }
+    else setSpacer(Math.max(0, fullHeightRef.current - el.offsetHeight));
+  }, [videoMode]);
   const nextIdx = nextUndoneIndex(localCues, doneIds);
   const badge = badgeFor(lesson.status, { done: doneIds.size, total: localCues.length });
 
@@ -227,10 +252,14 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
   };
 
   return (
-    <main data-player-state={playerState} className="pb-[84px] lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:pb-0">
-      {/* Khối trái: sticky trên mobile, tĩnh trên desktop */}
-      <div className="sticky top-0 z-10 -mx-4 flex flex-col gap-2 bg-page px-4 pb-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:gap-3 lg:px-0 lg:pb-0">
-        <div className="flex h-[52px] items-center gap-1 lg:hidden">
+    <main
+      data-page="study" data-player-state={playerState}
+      className="pb-[84px] lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:pb-0 land:grid land:h-[100dvh] land:grid-cols-[minmax(0,11fr)_minmax(0,9fr)] land:gap-3 land:pb-0"
+    >
+      {/* Khối trái: sticky trên mobile (dưới safe-area), tĩnh trên desktop; landscape = cột trái cao 100dvh */}
+      <div ref={stickyRef} className="sticky top-[env(safe-area-inset-top)] z-10 -mx-4 flex flex-col gap-2 bg-page px-4 pb-2 sm:-mx-6 sm:px-6 lg:static lg:mx-0 lg:gap-3 lg:px-0 lg:pb-0 land:static land:mx-0 land:h-[100dvh] land:overflow-hidden land:px-0 land:pb-0">
+        {/* Hàng tiêu đề mobile; compact: cao bằng video thu nhỏ (96px + lề) và chừa chỗ bên phải cho video */}
+        <div className={cn("flex items-center gap-1 lg:hidden land:hidden", videoMode === "compact" ? "h-[108px] pr-[180px]" : "h-[52px]")}>
           <Link href="/" aria-label="Về thư viện" className="grid size-[38px] shrink-0 place-items-center rounded-full text-muted hover:bg-surface-2">
             <Icon name="chevron-left" className="size-5" />
           </Link>
@@ -244,14 +273,26 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
         </div>
         <h1 lang="ja" className="hidden font-jp text-xl font-semibold leading-snug lg:block">{lesson.title}</h1>
 
-        <VideoFrame
-          lesson={lesson} videoUrl={videoUrl} localUrl={localUrl} mode="full" badge={badge}
-          onReady={onPlayerReady} onLocalFile={pickLocal}
-          onLoadedMetadata={(durationSec) => {
-            if (!localFileRef.current) return;
-            setLocalWarn(checkMatch(localFileRef.current, durationSec, lesson).reasons);
-          }}
-        />
+        {/* Một VideoFrame duy nhất; compact = absolute góc phải hàng tiêu đề. Chạm → về đầu trang + full ngay (cuộn tức
+            thời, không smooth: smooth có thể bị scrollIntoView của cue đang phát cắt ngang giữa vùng trễ 60–120px và
+            kẹt ở compact). Landscape: giới hạn chiều rộng theo chiều cao màn để còn chỗ cho dải điều khiển + hàng tab. */}
+        <div
+          data-testid="video-frame" data-mode={videoMode}
+          onClick={videoMode === "compact" ? () => { setVideoMode("full"); window.scrollTo({ top: 0 }); } : undefined}
+          className={cn(
+            "transition-[width] duration-200 land:static land:w-auto land:max-w-[calc((100dvh-185px)*16/9)]",
+            videoMode === "compact" ? "absolute right-4 top-[6px] z-20 w-[170px] sm:right-6 lg:static lg:w-auto" : "w-full",
+          )}
+        >
+          <VideoFrame
+            lesson={lesson} videoUrl={videoUrl} localUrl={localUrl} mode={videoMode} badge={badge}
+            onReady={onPlayerReady} onLocalFile={pickLocal}
+            onLoadedMetadata={(durationSec) => {
+              if (!localFileRef.current) return;
+              setLocalWarn(checkMatch(localFileRef.current, durationSec, lesson).reasons);
+            }}
+          />
+        </div>
         {localWarn.length > 0 && (
           <div role="status" className="flex items-center justify-between gap-2 rounded-md bg-warning-soft px-3 py-2 text-xs text-warning">
             <span>File có thể không đúng ({localWarn.join(", ")}).</span>
@@ -259,7 +300,7 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
           </div>
         )}
 
-        <StudyControls className="hidden lg:flex" extra={shareButton} {...controls} />
+        <StudyControls className="hidden lg:flex land:flex" extra={shareButton} {...controls} />
 
         <div className="flex items-center justify-between gap-2 lg:hidden">
           <SegmentedControl
@@ -288,8 +329,10 @@ export default function StudyView({ lesson, cues, vocab, videoUrl, initialDoneCu
         </div>
       </div>
 
+      {spacer > 0 && <div aria-hidden style={{ height: spacer }} className="lg:hidden land:hidden" />}
+
       {/* Khối phải */}
-      <div className="flex flex-col gap-4 pt-2 lg:pt-0">
+      <div className="flex flex-col gap-4 pt-2 lg:pt-0 land:h-[100dvh] land:overflow-y-auto land:pt-0 land:pb-2">
         <div className={cn(mobileTab !== "cues" && "hidden lg:block")}>
           <CueList
             cues={localCues} activeIdx={activeIdx} showTarget={showTarget} onSeek={seekToCue}

@@ -27,7 +27,7 @@ export function MobileDock({ abActive, onToggleAb, rate, onChangeRate, showTarge
   }, [speedOpen]);
 
   return (
-    <div ref={rootRef} data-testid="mobile-dock" className="fixed inset-x-0 bottom-0 z-20 lg:hidden">
+    <div ref={rootRef} data-testid="mobile-dock" className="fixed inset-x-0 bottom-0 z-20 lg:hidden land:hidden">
       <div className="relative mx-auto max-w-[1200px] px-2 pb-[env(safe-area-inset-bottom)]">
         {speedOpen && (
           <div role="menu" aria-label="Tốc độ phát" className="absolute bottom-[calc(100%+6px)] left-1/2 flex -translate-x-1/2 gap-1 rounded-full border border-line bg-surface p-1 shadow-card">

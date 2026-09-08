@@ -10,9 +10,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const stats = (data as ReviewStats[] | null)?.[0];
   const reviewDue = stats ? badgeCount(stats) : 0;
   return (
-    <div className="min-h-screen bg-page text-ink">
+    <div className="group/app min-h-screen bg-page text-ink">
       <AppHeader reviewDue={reviewDue} />
-      <div className="mx-auto max-w-[1200px] px-4 py-5 sm:px-6">{children}</div>
+      <div className="mx-auto max-w-[1200px] px-4 py-5 sm:px-6 land:py-0">{children}</div>
     </div>
   );
 }

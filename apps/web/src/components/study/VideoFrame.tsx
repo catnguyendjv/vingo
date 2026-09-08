@@ -14,7 +14,7 @@ export type VideoFrameProps = {
   lesson: LessonRow;
   videoUrl: string | null;
   localUrl: string | null;
-  /** "compact" dùng ở Task 13 (video gọn khi cuộn); hiện luôn "full". */
+  /** "compact": video thu nhỏ khi cuộn trên điện thoại dọc (spec P2 §6 M2) — chỉ đổi class, cha co bằng width. */
   mode: "full" | "compact";
   onReady: (player: PlayerAdapter) => void;
   onLocalFile: (f: File) => void;

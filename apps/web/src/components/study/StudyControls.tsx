@@ -27,28 +27,31 @@ export function StudyControls({
   const hint = abActive && activeIdx >= 0
     ? `Đang lặp câu #${activeIdx + 1} · bấm lại để tắt.`
     : nextIdx >= 0 ? `Tiếp tục sẽ nhảy tới câu #${nextIdx + 1}.` : "Đã học hết mọi câu.";
+  // Landscape: nút cỡ nhỏ để dải điều khiển gọn (cn không resolve xung đột; variant land: thắng nhờ thứ tự CSS).
+  const dense = "land:min-h-[34px] land:px-3 land:text-[13px]";
   return (
-    <div className={cn("flex-col gap-2", className)}>
-      <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3">
+    // Landscape điện thoại (land:): dải mỏng dưới video — bỏ hint, nhãn "Tốc độ", vòng % và slot Sửa/Chia sẻ (spec P2 §6 M1).
+    <div className={cn("flex-col gap-2 land:gap-0", className)}>
+      <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 land:gap-1.5 land:p-2">
         <div className="flex flex-wrap items-center gap-2">
-          <Button pressed={abActive} onClick={onToggleAb}><Icon name="repeat" className="size-[17px]" />Lặp câu</Button>
-          <span className="ml-1 text-sm text-muted">Tốc độ</span>
+          <Button pressed={abActive} onClick={onToggleAb} className={dense}><Icon name="repeat" className="size-[17px]" />Lặp câu</Button>
+          <span className="ml-1 text-sm text-muted land:hidden">Tốc độ</span>
           <SegmentedControl
             ariaLabel="Tốc độ phát" tight value={String(rate)} onChange={(v) => onChangeRate(Number(v))}
             items={RATES.map((r) => ({ value: String(r), label: `${r}×` }))}
           />
-          <Button onClick={onToggleTarget}>
+          <Button onClick={onToggleTarget} className={dense}>
             <Icon name={showTarget ? "eye-off" : "eye"} className="size-[17px]" />{showTarget ? "Ẩn" : "Hiện"} bản dịch
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={onMarkUpToActive} disabled={activeIdx < 0}>
+          <Button onClick={onMarkUpToActive} disabled={activeIdx < 0} className={dense}>
             <Icon name="check-check" className="size-[17px]" />Đã học tới câu đang phát
           </Button>
-          <Button variant="primary" onClick={onContinue} disabled={nextIdx < 0}>
+          <Button variant="primary" onClick={onContinue} disabled={nextIdx < 0} className={dense}>
             <Icon name="skip-forward" className="size-[17px]" />Tiếp tục
           </Button>
-          <span className="ml-1 flex items-center gap-2">
+          <span className="ml-1 flex items-center gap-2 land:hidden">
             <ProgressRing value={percent(done, total)} />
             <span className="leading-tight">
               <span className="block text-sm font-semibold tabular-nums">{done}/{total}</span>
@@ -56,7 +59,7 @@ export function StudyControls({
             </span>
           </span>
           {(extra || canEdit) && (
-            <span className="ml-auto flex items-center gap-2">
+            <span className="ml-auto flex items-center gap-2 land:hidden">
               {extra}
               {canEdit && (
                 <Button variant="soft" pressed={editMode} onClick={onToggleEdit}>
@@ -67,7 +70,7 @@ export function StudyControls({
           )}
         </div>
       </div>
-      <p className="min-h-4 px-1 text-xs text-muted">{hint}</p>
+      <p className="min-h-4 px-1 text-xs text-muted land:hidden">{hint}</p>
     </div>
   );
 }

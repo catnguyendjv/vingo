@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Điện thoại xoay ngang: trang học 2 cột, ẩn header/dock (spec P2 §6 M1) */
+@custom-variant land (@media (orientation: landscape) and (max-height: 500px));
+
 /* ===== Token thô (tên theo spec 2.1). 1) light mặc định ===== */
 :root {
   --canvas: #F1EAE0;
